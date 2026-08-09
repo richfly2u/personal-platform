@@ -26,6 +26,73 @@ async function init() {
   await loadSyncData();
   renderAll();
   setupVoice();
+  setupSyncButton();
+}
+
+// === 同步按鈕（🔄）===
+const SYNC_HOST = 'https://192.168.0.75:9443';
+
+function setupSyncButton() {
+  const btn = document.getElementById('syncBtn');
+  const statusEl = document.getElementById('syncStatus');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    btn.textContent = '⏳';
+    statusEl.textContent = '同步中...';
+    try {
+      const resp = await fetch(`${SYNC_HOST}/sync`, {cache: 'no-store'});
+      const result = await resp.json();
+      if (result.ok) {
+        // 重新載入最新資料（本機伺服器上的最新 JSON）
+        await reloadSyncData();
+        statusEl.textContent = '✓ 已更新';
+      } else {
+        statusEl.textContent = '✗ 同步失敗';
+        console.warn('sync fail:', result);
+      }
+    } catch (e) {
+      statusEl.textContent = '需在家裡 WiFi';
+    }
+    btn.textContent = '🔄';
+    setTimeout(() => { statusEl.textContent = ''; }, 4000);
+  });
+}
+
+// 從本機伺服器重新載入同步資料（GitHub Pages 版改抓本機，速度最快）
+async function reloadSyncData() {
+  try {
+    const invRes = await fetch(`${SYNC_HOST}/data/invoices.json`, {cache: 'no-store'});
+    if (invRes.ok) {
+      const invoices = await invRes.json();
+      const expenseItems = getItems('expense');
+      appData.items.expense = expenseItems.filter(e => e.source !== 'invoice');
+      for (const inv of invoices) {
+        appData.items.expense.push({
+          id: inv.id, store: inv.store || '未知', text: inv.item || '',
+          amount: inv.amount || 0, date: inv.date || '', source: 'invoice'
+        });
+      }
+    }
+  } catch(e) {}
+
+  try {
+    const todoRes = await fetch(`${SYNC_HOST}/data/todos.json`, {cache: 'no-store'});
+    if (todoRes.ok) {
+      const todosData = await todoRes.json();
+      const todoItems = getItems('todo');
+      appData.items.todo = todoItems.filter(t => t.source !== 'easynote');
+      for (const item of todosData.items || []) {
+        appData.items.todo.push({
+          id: 'esynote_' + uid(), text: item.text,
+          completed: item.completed || false, date: today(), source: 'easynote'
+        });
+      }
+    }
+  } catch(e) {}
+
+  saveData();
+  renderAll();
 }
 
 // === 資料讀寫 ===
@@ -350,9 +417,31 @@ function renderMain() {
   if (list) {
     // 勾選
     list.querySelectorAll('.todo-check').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', async () => {
         const it = items.find(i => i.id === el.dataset.id);
-        if (it) { it.completed = !it.completed; saveData(); renderMain(); }
+        if (!it) return;
+        const checking = !it.completed;
+        it.completed = checking;
+        saveData();
+        renderMain();
+
+        // easynote 來源：勾選完成時回寫手機 easynote
+        if (checking && it.source === 'easynote') {
+          try {
+            const resp = await fetch(`${SYNC_HOST}/api/todo-done`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({text: it.text})
+            });
+            const result = await resp.json();
+            if (!result.ok) {
+              console.warn('easynote writeback fail:', result);
+              alert(result.error || '回寫失敗（需手機解鎖、在家裡 WiFi）');
+            }
+          } catch (e) {
+            alert('回寫失敗：需在家裡 WiFi');
+          }
+        }
       });
     });
     // 編輯
