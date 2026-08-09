@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
@@ -535,9 +535,9 @@ function renderMain() {
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
     }
     const catMax = Math.max(...Object.values(catSum), 1);
+    // 六個分類永遠顯示（沒花費顯示 $0）
     const catHtml = EXPENSE_CATS.map(c => {
       const v = catSum[c] || 0;
-      if (v === 0) return '';
       return `
         <div class="cat-row">
           <span class="cat-name">${c}</span>
