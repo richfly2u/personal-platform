@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '9';
+const APP_VERSION = '11';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
@@ -467,7 +467,7 @@ function renderNav() {
     </button>
   `).join('') + `
     <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
-    <button class="nav-btn dash-btn" id="dashBtn" title="每日行動儀表板">📊 儀表板</button>`;
+    <button class="nav-btn dash-btn" id="dashBtn" title="好習慣（每日行動儀表板）">📊 好習慣</button>`;
 
   nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {

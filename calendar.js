@@ -185,6 +185,7 @@ function renderCalendarMain() {
         <span class="cal-moy">${monthLabel}<small class="cal-lunmon">${lunMonthLabel}</small></span>
         <button id="calNext">›</button>
         <button id="calToday" class="cal-today-btn">今天</button>
+        <button id="calAddBtn" class="cal-add-btn" title="新增行程">＋</button>
       </div>
       <div class="cal-weekdays">
         <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
@@ -200,6 +201,13 @@ function renderCalendarMain() {
     const t = new Date();
     calYear = t.getFullYear(); calMonth = t.getMonth();
     calSelectedDay = todayStr; renderMain();
+  });
+  // ＋ 新增：沒選日期就預設今天，開輸入框並聚焦
+  document.getElementById('calAddBtn').addEventListener('click', () => {
+    calSelectedDay = calSelectedDay || todayStr;
+    renderMain();
+    const inp = document.getElementById('newEvTitle');
+    if (inp) { inp.focus(); inp.scrollIntoView({behavior: 'smooth', block: 'center'}); }
   });
   main.querySelectorAll('.cal-cell[data-day]').forEach(cell => {
     cell.addEventListener('click', () => {
