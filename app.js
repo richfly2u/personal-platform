@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '19';
+const APP_VERSION = '20';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) console.log('有新版本，請重新整理'); })
@@ -316,8 +316,8 @@ function setupVoice() {
     }
 
     if (catId === 'expense') {
-      const amtMatch = text.match(/(\d+)\s*元/);
-      addExpense(text, amtMatch ? parseInt(amtMatch[1]) : 0);
+      const amt = parseAmount(text);
+      addExpense(text, amt);
     } else {
       getItems(catId).unshift({
         id: uid(), text, date: today(), source: 'voice', completed: false
@@ -365,6 +365,15 @@ function classifyText(text) {
   if (t.length <= 8) return 'todo';
   if (t.length >= 30) return 'diary';
   return 'idea';
+}
+
+// 金額解析：優先「50000元/3000塊」，其次抓最後一個數字
+function parseAmount(text) {
+  let m = text.match(/(\d+)\s*(?:元|塊|塊錢|元整)/);
+  if (m) return parseInt(m[1], 10);
+  const nums = text.match(/\d+/g);
+  if (nums && nums.length) return parseInt(nums[nums.length - 1], 10);
+  return 0;
 }
 
 function addExpense(text, amount) {
@@ -606,8 +615,8 @@ function renderMain() {
       const text = addText.value.trim();
       if (!text) return;
       if (isExpense) {
-        const amt = text.match(/(\d+)\s*元/);
-        addExpense(text, amt ? parseInt(amt[1]) : 0);
+        const amt = parseAmount(text);
+        addExpense(text, amt);
       } else {
         getItems(cat.id).unshift({id: uid(), text, date: today(), source: 'manual', completed: false});
       }
