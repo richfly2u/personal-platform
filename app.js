@@ -319,8 +319,26 @@ function classifyText(text) {
 
 function addExpense(text, amount) {
   getItems('expense').unshift({
-    id: uid(), store: '手動', text, amount, date: today(), source: 'voice'
+    id: uid(), store: detectStore(text), text, amount, date: today(), source: 'voice'
   });
+}
+
+// 從語音/輸入文字判斷商店
+function detectStore(text) {
+  // 「在全家買了...」「在X消費/花了」
+  const m = text.match(/在([\u4e00-\u9fffA-Za-z0-9]{2,8}?)(買|消費|花了|付了|購物|加油)/);
+  if (m) return m[1];
+  // 開頭是常見商店名
+  const stores = ['全家','7-11','7-11','萊爾富','全聯','家樂福','大潤發','好市多','costco',
+    '小北','寶雅','康是美','屈臣氏','光南','中油','台糖','統一超商','ok便利','ok超商',
+    '美廉社','愛買','全買','楓康','頂好','松青','全國家電','全國加油站','台灣中油','台塑'];
+  for (const s of stores) {
+    if (text.startsWith(s)) return s;
+  }
+  // 「X店」「X超市」「X賣場」結尾
+  const m2 = text.match(/([\u4e00-\u9fff]{2,6}?(?:店|超市|賣場|百貨))/);
+  if (m2) return m2[1];
+  return '手動';
 }
 
 // === 渲染 ===
