@@ -348,8 +348,11 @@ function classifyText(text) {
 
 function addExpense(text, amount) {
   const store = detectStore(text);
+  // 收入偵測：薪水/獎金/紅包/賣了/退款/中獎等
+  const isIncome = /收入|賺了|賺到|領到|領錢|薪水|薪資|獎金|紅包|賣了|退款|退費|中獎|理賠/.test(text);
   getItems('expense').unshift({
-    id: uid(), store, item: extractItem(text, store), text, amount, date: today(), source: 'voice'
+    id: uid(), store, item: extractItem(text, store), text, amount, date: today(),
+    source: 'voice', type: isIncome ? 'income' : 'expense'
   });
 }
 
@@ -493,18 +496,23 @@ function renderMain() {
   let items = getItems(cat.id);
   const isExpense = cat.id === 'expense';
 
-  // 收支摘要（本月份 + 分類 + 每日曲線圖）
+  // 收支摘要（本月份 + 收入支出表 + 分類 + 每日曲線圖）
   let summaryHtml = '';
   if (isExpense) {
     const now = new Date();
     const curMonth = now.getMonth() + 1;
     const maxDay = now.getDate();
     const monthItems = items.filter(it => monthOf(it.date) === curMonth);
-    const total = monthItems.reduce((s, e) => s + (e.amount || 0), 0);
+    // 收入/支出分開
+    const expItems = monthItems.filter(it => (it.type || 'expense') !== 'income');
+    const incItems = monthItems.filter(it => (it.type || 'expense') === 'income');
+    const expTotal = expItems.reduce((s, e) => s + (e.amount || 0), 0);
+    const incTotal = incItems.reduce((s, e) => s + (e.amount || 0), 0);
+    const balance = incTotal - expTotal;
 
-    // 分類統計
+    // 支出分類統計（食衣住行道場）
     const catSum = {};
-    for (const it of monthItems) {
+    for (const it of expItems) {
       const c = it.cat || expenseCat(it.store, it.text);
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
     }
@@ -522,14 +530,18 @@ function renderMain() {
 
     summaryHtml = `
       <div id="expenseSummary">
-        <div class="label">${curMonth} 月總支出</div>
-        <div class="amount">$${total.toLocaleString()}</div>
-        <div class="label">${monthItems.length} 筆記錄（本月）</div>
+        <div class="label">${curMonth} 月收支</div>
+        <div class="summary-row">
+          <div class="sum-col"><span class="sum-label">收入</span><span class="sum-income">$${incTotal.toLocaleString()}</span></div>
+          <div class="sum-col"><span class="sum-label">支出</span><span class="sum-expense">$${expTotal.toLocaleString()}</span></div>
+          <div class="sum-col"><span class="sum-label">結餘</span><span class="sum-balance ${balance>=0?'pos':'neg'}">$${balance.toLocaleString()}</span></div>
+        </div>
+        <div class="label">${monthItems.length} 筆（本月）</div>
       </div>
-      ${catHtml ? `<div class="cat-stats">${catHtml}</div>` : ''}
+      ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}
       <div class="chart-box">
         <div class="chart-title">📈 每日花費（${curMonth}月 1-${maxDay}日）</div>
-        ${renderDailyChart(monthItems, maxDay)}
+        ${renderDailyChart(expItems, maxDay)}
       </div>`;
     // 本月過濾的列表
     items = monthItems;
@@ -552,7 +564,7 @@ function renderMain() {
   // 新增輸入框
   const addForm = isExpense
     ? `<div class="add-form">
-         <input id="addText" placeholder="例如：全家 買飲料 50元">
+         <input id="addText" placeholder="例如：全家 買飲料 50元｜薪水 50000元">
          <button id="addBtn">新增</button>
        </div>`
     : `<div class="add-form">
@@ -650,10 +662,12 @@ function renderMain() {
         const storeEl = document.getElementById('editStore');
         const amountEl = document.getElementById('editAmount');
         const catEl = document.getElementById('editCat');
+        const typeEl = document.getElementById('editType');
         if (textEl) it.text = textEl.value.trim() || it.text;
         if (storeEl) it.store = storeEl.value.trim() || it.store;
         if (amountEl) it.amount = parseInt(amountEl.value) || 0;
         if (catEl) it.cat = catEl.value;
+        if (typeEl) it.type = typeEl.value;
         editingId = null;
         saveData();
         renderMain();
@@ -675,15 +689,16 @@ function renderItem(cat, it) {
     const subText = (it.store && it.store !== '手動')
       ? (it.item || it.text || '')
       : (it.text !== it.item ? it.text : '');
-    const c = it.cat || expenseCat(it.store, it.text);
+    const isIncome = (it.type || 'expense') === 'income';
+    const c = isIncome ? '收入' : (it.cat || expenseCat(it.store, it.text));
     return `
       <li>
         <span style="flex:1">
           <strong>${escHtml(mainName)}</strong>
           ${subText ? `<span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(subText)}</span>` : ''}
         </span>
-        <span class="cat-badge cat-${c}">${c}</span>
-        <span style="font-weight:600;color:var(--danger)">$${it.amount||0}</span>
+        <span class="cat-badge cat-${c === '收入' ? 'income' : c}">${c}</span>
+        <span style="font-weight:600;color:${isIncome ? 'var(--success)' : 'var(--danger)'}">${isIncome ? '+' : '-'}$${it.amount||0}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>
@@ -713,14 +728,19 @@ function renderItem(cat, it) {
 function renderEditForm(cat, it) {
   if (cat.id === 'expense') {
     const curCat = it.cat || expenseCat(it.store, it.text);
+    const isIncome = (it.type || 'expense') === 'income';
     const catOptions = EXPENSE_CATS.map(c =>
       `<option value="${c}" ${c===curCat?'selected':''}>${c}</option>`).join('');
     return `
       <li class="edit-form">
         <div class="edit-row">
-          <input id="editStore" value="${escHtml(it.store||'')}" placeholder="商店">
+          <select id="editType" style="flex:1">
+            <option value="expense" ${!isIncome?'selected':''}>支出</option>
+            <option value="income" ${isIncome?'selected':''}>收入</option>
+          </select>
           <input id="editAmount" type="number" value="${it.amount||0}" placeholder="金額">
         </div>
+        <input id="editStore" value="${escHtml(it.store||'')}" placeholder="商店/來源">
         <input id="editText" value="${escHtml(it.text||'')}" placeholder="品項">
         <div class="edit-row">
           <select id="editCat">${catOptions}</select>
