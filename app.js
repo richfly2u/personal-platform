@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '12';
+const APP_VERSION = '13';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
@@ -300,10 +300,20 @@ function setupVoice() {
     startListening();
   });
 
-  saveBtn.addEventListener('click', () => {
-    const text = voiceText.textContent.trim();
+  saveBtn.addEventListener('click', async () => {
+    let text = voiceText.textContent.trim();
     const catId = categorySelect.value;
     if (!text) return;
+
+    // 日記：先潤稿（加標點 + 潤飾）
+    if (catId === 'diary') {
+      saveBtn.textContent = '潤稿中...';
+      saveBtn.disabled = true;
+      const polished = await polishText(text);
+      text = polished || localPolish(text);
+      saveBtn.textContent = '儲存';
+      saveBtn.disabled = false;
+    }
 
     if (catId === 'expense') {
       const amtMatch = text.match(/(\d+)\s*元/);
@@ -323,6 +333,27 @@ function setupVoice() {
     resultDiv.classList.add('hidden');
     voiceText.textContent = '';
   });
+}
+
+// 日記語音潤稿：DeepSeek 加標點 + 潤飾（需在家連本機伺服器）
+async function polishText(text) {
+  try {
+    const resp = await fetch(`${SYNC_HOST}/api/polish`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text})
+    });
+    const data = await resp.json();
+    if (data.ok && data.text) return data.text;
+  } catch(e) {}
+  return null;
+}
+
+// 本地簡易補標點（伺服器不可用時的備案）
+function localPolish(text) {
+  let t = text.trim();
+  if (t && !/[。！？!?]$/.test(t)) t += '。';
+  return t;
 }
 
 function classifyText(text) {

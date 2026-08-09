@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """個人平台同步伺服器 — HTTPS + /sync + /api/todo-done"""
-import http.server, ssl, os, json, re, subprocess, sys, threading, time, datetime
+import http.server, ssl, os, json, re, subprocess, sys, threading, time, datetime, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PORT = 9443
@@ -192,6 +192,51 @@ def cal_del(title, date):
         f"--where \\\"title='{title}' AND dtstart={start_ms}\\\"\"", 15)
     return {'ok': True, 'note': f'已刪除（無記錄）：{title} ({date})'}
 
+_DEEPSEEK_KEY = None
+
+def _load_deepseek_key():
+    """從 ~/.hermes/.env 讀 DEEPSEEK_API_KEY（有效的那組）"""
+    global _DEEPSEEK_KEY
+    if _DEEPSEEK_KEY:
+        return _DEEPSEEK_KEY
+    try:
+        env = os.path.join(os.path.expanduser('~'), '.hermes', '.env')
+        for line in open(env, encoding='utf-8'):
+            line = line.strip()
+            if line.startswith('DEEPSEEK_API_KEY='):
+                _DEEPSEEK_KEY = line.split('=', 1)[1].strip().strip('"').strip("'")
+                break
+    except Exception:
+        pass
+    return _DEEPSEEK_KEY
+
+def polish_text(text):
+    """DeepSeek 潤稿：加標點 + 潤飾（用於日記語音）"""
+    key = _load_deepseek_key()
+    if not key:
+        return {'ok': False, 'error': '無 DeepSeek key'}
+    payload = {
+        'model': 'deepseek-chat',
+        'messages': [
+            {'role': 'system', 'content': '你是繁體中文潤稿助手。把使用者輸入的語音轉文字加上正確標點符號並潤飾成通順的句子，保留原意與細節，不增刪事實，只輸出潤飾後的文字，不要任何解釋或前言。'},
+            {'role': 'user', 'content': text}
+        ],
+        'temperature': 0.2,
+        'max_tokens': 800
+    }
+    try:
+        req = urllib.request.Request(
+            'https://api.deepseek.com/chat/completions',
+            data=json.dumps(payload).encode(),
+            headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {key}'},
+            method='POST')
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read())
+        out = data['choices'][0]['message']['content'].strip()
+        return {'ok': True, 'text': out}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
 def run_sync():
     """跑 sync_all.py（含 git push）"""
     script = os.path.join(ROOT, 'sync', 'sync_all.py')
@@ -272,6 +317,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if not title or not date:
                     return self._json({'ok': False, 'error': '缺 title/date'})
                 return self._json(cal_del(title, date))
+            except Exception as e:
+                return self._json({'ok': False, 'error': str(e)})
+        if url == '/api/polish':
+            length = int(self.headers.get('Content-Length', 0))
+            try:
+                body = json.loads(self.rfile.read(length) or b'{}')
+                text = body.get('text', '')
+                if not text:
+                    return self._json({'ok': False, 'error': '缺 text'})
+                return self._json(polish_text(text))
             except Exception as e:
                 return self._json({'ok': False, 'error': str(e)})
         self._serve_file(url)
