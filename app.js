@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
@@ -550,9 +550,9 @@ function renderMain() {
       <div id="expenseSummary">
         <div class="label">${curMonth} 月收支</div>
         <div class="summary-row">
-          <div class="sum-col"><span class="sum-label">收入</span><span class="sum-income">$${incTotal.toLocaleString()}</span></div>
-          <div class="sum-col"><span class="sum-label">支出</span><span class="sum-expense">$${expTotal.toLocaleString()}</span></div>
-          <div class="sum-col"><span class="sum-label">結餘</span><span class="sum-balance ${balance>=0?'pos':'neg'}">$${balance.toLocaleString()}</span></div>
+          <div class="sum-col sum-inc"><span class="sum-label">收入</span><span class="sum-income">$${incTotal.toLocaleString()}</span></div>
+          <div class="sum-col sum-exp"><span class="sum-label">支出</span><span class="sum-expense">$${expTotal.toLocaleString()}</span></div>
+          <div class="sum-col sum-bal"><span class="sum-label">結餘</span><span class="sum-balance ${balance>=0?'pos':'neg'}">$${balance.toLocaleString()}</span></div>
         </div>
         <div class="label">${monthItems.length} 筆（本月）</div>
       </div>

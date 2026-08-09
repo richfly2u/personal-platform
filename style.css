@@ -184,8 +184,9 @@ li, .card {
 
 /* 收支摘要 */
 #expenseSummary {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
+  background: #fff8f0;
+  color: var(--text);
+  border: 1px solid var(--border);
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 12px;
@@ -197,7 +198,7 @@ li, .card {
 }
 #expenseSummary .label {
   font-size: 0.8rem;
-  opacity: 0.85;
+  color: var(--text2);
 }
 .summary-row {
   display: flex;
@@ -211,19 +212,22 @@ li, .card {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: rgba(255,255,255,.15);
   border-radius: 10px;
   padding: 8px 4px;
 }
+/* 三區塊不同淡色 */
+.sum-inc { background: #d1fae5; }
+.sum-exp { background: #ffedd5; }
+.sum-bal { background: #ede9fe; }
 .sum-label {
   font-size: 0.72rem;
-  opacity: .85;
+  opacity: .75;
 }
-.sum-income { font-size: 1.15rem; font-weight: 700; color: #d1fae5; }
-.sum-expense { font-size: 1.15rem; font-weight: 700; color: #fde68a; }
+.sum-income { font-size: 1.15rem; font-weight: 700; color: #047857; }
+.sum-expense { font-size: 1.15rem; font-weight: 700; color: #c2410c; }
 .sum-balance { font-size: 1.15rem; font-weight: 700; }
-.sum-balance.pos { color: #d1fae5; }
-.sum-balance.neg { color: #fca5a5; }
+.sum-balance.pos { color: #047857; }
+.sum-balance.neg { color: #dc2626; }
 .cat-stats-title {
   font-size: 0.8rem;
   font-weight: 700;
