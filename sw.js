@@ -1,5 +1,5 @@
 /* === Service Worker === */
-const CACHE = 'personal-platform-v2';
+const CACHE = 'personal-platform-v3';
 const URLS = ['/', 'index.html', 'style.css', 'app.js', 'manifest.json'];
 
 self.addEventListener('install', e => {
@@ -15,7 +15,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // 每次先拿網路，失敗才用快取（確保最新版）
+  // 網路優先：先拿網路，失敗才用快取（確保最新版）
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();
