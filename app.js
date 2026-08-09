@@ -10,6 +10,14 @@ const BUILTIN_CATEGORIES = [
   {id: 'idea',    name: '靈感',     icon: '💡'}
 ];
 
+// === 自動更新偵測 ===
+// 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
+const APP_VERSION = '9';
+fetch('version.txt?v=' + Date.now())
+  .then(r => r.text())
+  .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
+  .catch(() => {});
+
 // 資料結構
 let appData = {
   categories: [...BUILTIN_CATEGORIES],
