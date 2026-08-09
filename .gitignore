@@ -3,3 +3,5 @@ server.log
 cert.pem
 key.pem
 __pycache__/
+data/*_dump.xml
+data/debug_*.xml
