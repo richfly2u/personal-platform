@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '11';
+const APP_VERSION = '12';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
@@ -107,15 +107,6 @@ async function reloadSyncData() {
           completed: item.completed || false, date: today(), source: 'easynote'
         });
       }
-    }
-  } catch(e) {}
-
-  // 行事曆事件
-  try {
-    const calRes = await fetch(`${SYNC_HOST}/data/calendar.json`, {cache: 'no-store'});
-    if (calRes.ok) {
-      const calData = await calRes.json();
-      appData.syncEvents = calData.events || [];
     }
   } catch(e) {}
 
@@ -214,15 +205,6 @@ async function loadSyncData() {
           });
         }
       }
-    }
-  } catch(e) {}
-
-  // 行事曆事件
-  try {
-    const calRes = await fetch('data/calendar.json');
-    if (calRes.ok) {
-      const calData = await calRes.json();
-      appData.syncEvents = calData.events || [];
     }
   } catch(e) {}
 
@@ -459,8 +441,7 @@ function renderAll() {
 
 function renderNav() {
   const nav = document.getElementById('nav');
-  nav.innerHTML = `
-    <button class="nav-btn ${currentTab==='calendar'?'active':''}" data-tab="calendar">🗓️ 行事曆</button>` +
+  nav.innerHTML =
     appData.categories.map(c => `
     <button class="nav-btn ${c.id===currentTab?'active':''}" data-tab="${c.id}">
       ${c.icon} ${c.name.replace('事項','')}
@@ -495,9 +476,6 @@ function renderNav() {
 }
 
 function renderMain() {
-  // 行事曆
-  if (currentTab === 'calendar') { renderCalendarMain(); return; }
-
   const main = document.getElementById('main');
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
   if (!cat) return;
