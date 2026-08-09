@@ -85,11 +85,18 @@ def todo_done(text):
     # checkbox 在項目文字左側 x≈198
     adb_tap(198, y); time.sleep(1.2)
 
-    # 驗證：有 checked="true"
+    # 驗證：該項目所在 y 的 CheckBox 是否 checked="true"
     xml = adb_dump()
-    any_checked = 'checked="true"' in xml
+    target_checked = False
+    # CheckBox 的 y 範圍與項目文字接近（上下差 <120）
+    for cb in re.finditer(
+        r'class="android.widget.CheckBox"[^>]*checked="(true|false)"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+        cb_cy = (int(cb.group(3)) + int(cb.group(5))) // 2
+        if abs(cb_cy - y) < 120:
+            target_checked = cb.group(1) == 'true'
+            break
     adb_key('KEYCODE_BACK'); time.sleep(0.3)
-    return {'ok': any_checked, 'note': '已勾選' if any_checked else '未能確認勾選狀態'}
+    return {'ok': target_checked, 'note': '已勾選' if target_checked else '未勾選'}
 
 def run_sync():
     """跑 sync_all.py（含 git push）"""

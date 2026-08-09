@@ -41,8 +41,27 @@ def parse_checklist_items(root):
                 items.append(t)
     return items
 
+def is_locked(root):
+    """檢查 dump 是否為鎖定/AOD 畫面"""
+    for el in root.iter():
+        r = el.get('resource-id', '') or ''
+        if 'aod' in r.lower() or 'keyguard' in r.lower():
+            return True
+        if (el.get('package', '') or '') == 'com.miui.aod':
+            return True
+    return False
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
+    
+    # 喚醒手機（鎖定則報錯退出）
+    sh('adb shell input keyevent KEYCODE_WAKEUP')
+    time.sleep(1)
+    sh('adb shell wm dismiss-keyguard')
+    time.sleep(1)
+    if is_locked(dump()):
+        print('❌ 手機鎖定，請先解鎖')
+        return
     
     # Dismiss + force stop + fresh start
     sh('adb shell input keyevent KEYCODE_BACK')

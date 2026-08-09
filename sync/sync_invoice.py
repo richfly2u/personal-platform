@@ -83,8 +83,27 @@ def parse_invoices(root):
     
     return invoices
 
+def is_locked(root):
+    """檢查 dump 是否為鎖定/AOD 畫面"""
+    for el in root.iter():
+        r = el.get('resource-id', '') or ''
+        if 'aod' in r.lower() or 'keyguard' in r.lower():
+            return True
+        if (el.get('package', '') or '') == 'com.miui.aod':
+            return True
+    return False
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
+    
+    # 喚醒手機（鎖定則報錯退出）
+    subprocess.run('adb shell input keyevent KEYCODE_WAKEUP', shell=True, capture_output=True, timeout=8)
+    time.sleep(1)
+    subprocess.run('adb shell wm dismiss-keyguard', shell=True, capture_output=True, timeout=8)
+    time.sleep(1)
+    if is_locked(dump()):
+        print('❌ 手機鎖定，請先解鎖')
+        return
     
     if os.path.exists(INVOICE_JSON):
         with open(INVOICE_JSON, encoding='utf-8') as f:
