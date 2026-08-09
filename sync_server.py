@@ -82,8 +82,17 @@ def todo_done(text):
         return {'ok': False, 'error': '找不到該待辦項目'}
 
     x, y = bounds_center(m.group(1))
-    # checkbox 在項目文字左側 x≈198
-    adb_tap(198, y); time.sleep(1.2)
+    # 找同一行的 CheckBox（動態定位，比固定 x 可靠）
+    cb_x = None
+    for cb in re.finditer(
+        r'class="android.widget.CheckBox"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml):
+        cy = (int(cb.group(2)) + int(cb.group(4))) // 2
+        if abs(cy - y) < 120:
+            cb_x = (int(cb.group(1)) + int(cb.group(3))) // 2
+            break
+    if cb_x is None:
+        cb_x = 198  # fallback
+    adb_tap(cb_x, y); time.sleep(1.2)
 
     # 驗證：該項目所在 y 的 CheckBox 是否 checked="true"
     xml = adb_dump()
@@ -113,9 +122,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f'[{time.strftime("%H:%M:%S")}] {fmt % args}', flush=True)
 
+    def _cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
+    def do_OPTIONS(self):
+        # CORS 預檢（GitHub Pages 跨域連本機必經）
+        self.send_response(204)
+        self._cors_headers()
+        self.send_header('Access-Control-Max-Age', '86400')
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def _json(self, obj, code=200):
         body = json.dumps(obj, ensure_ascii=False).encode()
         self.send_response(code)
+        self._cors_headers()
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Content-Length', str(len(body)))
@@ -152,6 +175,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             file_path = os.path.join(file_path, 'index.html')
         if not file_path.startswith(ROOT) or not os.path.isfile(file_path):
             self.send_response(404)
+            self._cors_headers()
             self.end_headers()
             self.wfile.write(b'Not found')
             return
@@ -159,6 +183,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with open(file_path, 'rb') as f:
             data = f.read()
         self.send_response(200)
+        self._cors_headers()
         self.send_header('Content-Type', MIME.get(ext, 'application/octet-stream'))
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
         self.send_header('Content-Length', str(len(data)))
