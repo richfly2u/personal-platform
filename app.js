@@ -10,24 +10,12 @@ const BUILTIN_CATEGORIES = [
   {id: 'idea',    name: '靈感',     icon: '💡'}
 ];
 
-// === 自動更新偵測 ===
-// 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-// 防呆：同一版本 30 秒內只重載一次，避免無限迴圈
-const APP_VERSION = '17';
+// === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
+// 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
+const APP_VERSION = '18';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
-  .then(t => {
-    const v = t.trim();
-    if (v && v !== APP_VERSION) {
-      const lastVer = localStorage.getItem('pp_reload_ver');
-      const lastAt = parseInt(localStorage.getItem('pp_reload_at') || '0', 10);
-      if (lastVer !== v && Date.now() - lastAt > 30000) {
-        localStorage.setItem('pp_reload_ver', v);
-        localStorage.setItem('pp_reload_at', String(Date.now()));
-        location.reload();
-      }
-    }
-  })
+  .then(t => { if (t.trim() && t.trim() !== APP_VERSION) console.log('有新版本，請重新整理'); })
   .catch(() => {});
 
 // 資料結構
