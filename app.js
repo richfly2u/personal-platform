@@ -318,8 +318,9 @@ function classifyText(text) {
 }
 
 function addExpense(text, amount) {
+  const store = detectStore(text);
   getItems('expense').unshift({
-    id: uid(), store: detectStore(text), text, amount, date: today(), source: 'voice'
+    id: uid(), store, item: extractItem(text, store), text, amount, date: today(), source: 'voice'
   });
 }
 
@@ -339,6 +340,18 @@ function detectStore(text) {
   const m2 = text.match(/([\u4e00-\u9fff]{2,6}?(?:店|超市|賣場|百貨))/);
   if (m2) return m2[1];
   return '手動';
+}
+
+// 從語音/輸入文字擷取品項（「買蘋果」→「蘋果」）
+function extractItem(text, store) {
+  let t = text.replace(/\d+\s*元/g, '').trim();
+  // 在X買了Y / 在X買Y
+  const m = t.match(/在[\u4e00-\u9fffA-Za-z0-9]{2,8}?買(?:了)?([\u4e00-\u9fffA-Za-z0-9]+)/);
+  if (m) return m[1];
+  // 買了Y / 買Y / 花了Y / 付了Y / 消費Y
+  const m2 = t.match(/(?:買了|買|花了|花|消費|付了|付)([\u4e00-\u9fffA-Za-z0-9]+)/);
+  if (m2) return m2[1];
+  return t || (store !== '手動' ? '' : '手動');
 }
 
 // === 渲染 ===
@@ -521,11 +534,15 @@ function renderMain() {
 
 function renderItem(cat, it) {
   if (cat.id === 'expense') {
+    const mainName = (it.store && it.store !== '手動') ? it.store : (it.item || '手動');
+    const subText = (it.store && it.store !== '手動')
+      ? (it.item || it.text || '')
+      : (it.text !== it.item ? it.text : '');
     return `
       <li>
         <span style="flex:1">
-          <strong>${escHtml(it.store || '手動')}</strong>
-          <span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(it.text || '')}</span>
+          <strong>${escHtml(mainName)}</strong>
+          ${subText ? `<span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(subText)}</span>` : ''}
         </span>
         <span style="font-weight:600;color:var(--danger)">$${it.amount||0}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
