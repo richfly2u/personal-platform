@@ -13,7 +13,9 @@ const BUILTIN_CATEGORIES = [
 // 資料結構
 let appData = {
   categories: [...BUILTIN_CATEGORIES],
-  items: {}          // catId -> [{id, text, completed?, store?, amount?, date, source}]
+  items: {},          // catId -> [{id, text, completed?, store?, amount?, date, source}]
+  calEvents: [],      // 本機新增的行事曆事件
+  syncEvents: []      // 同步進來的行事曆事件
 };
 
 let currentTab = 'todo';
@@ -97,6 +99,15 @@ async function reloadSyncData() {
           completed: item.completed || false, date: today(), source: 'easynote'
         });
       }
+    }
+  } catch(e) {}
+
+  // 行事曆事件
+  try {
+    const calRes = await fetch(`${SYNC_HOST}/data/calendar.json`, {cache: 'no-store'});
+    if (calRes.ok) {
+      const calData = await calRes.json();
+      appData.syncEvents = calData.events || [];
     }
   } catch(e) {}
 
@@ -195,6 +206,15 @@ async function loadSyncData() {
           });
         }
       }
+    }
+  } catch(e) {}
+
+  // 行事曆事件
+  try {
+    const calRes = await fetch('data/calendar.json');
+    if (calRes.ok) {
+      const calData = await calRes.json();
+      appData.syncEvents = calData.events || [];
     }
   } catch(e) {}
 
@@ -363,6 +383,62 @@ function extractItem(text, store) {
   return t || (store !== '手動' ? '' : '手動');
 }
 
+// === 收支分類（食/衣/住/行/道場/其他）===
+const EXPENSE_CATS = ['食', '衣', '住', '行', '道場', '其他'];
+
+function expenseCat(store, text) {
+  const s = (store + ' ' + (text || '')).toLowerCase();
+  // 道場（優先）
+  if (/道場|佛堂|法會|辦道|供品|香燭|點傳|前賢|道親|發一|崇德|素食餐廳|素菜館/.test(s)) return '道場';
+  // 行
+  if (/中油|加油站|加油|汽油|柴油|捷運|高鐵|台鐵|客運|公車|計程車|小黃|停車|機車|汽車|油錢|悠遊卡|過路費|高鐵票|車票/.test(s)) return '行';
+  // 住
+  if (/房租|水電|電費|水費|瓦斯|第四台|網路費|家具|家電|修繕|裝潢|管理費|房屋|寢具|床墊/.test(s)) return '住';
+  // 衣
+  if (/衣服|上衣|褲子|鞋子|襪子|帽子|外套|飾品|配件|包包|皮包|皮帶|百貨/.test(s)) return '衣';
+  // 食
+  if (/全家|萊爾富|7-11|711|全聯|便利|超市|餐廳|便當|飲料|咖啡|早餐|午餐|晚餐|小吃|麵包|飯|菜|水果|肉|蛋|牛奶|豆漿|點心|夜市|鹹酥|速食|麥當勞|肯德基|披薩|餐飲|食堂/.test(s)) return '食';
+  return '其他';
+}
+
+// 日期輔助：date 可能是 "8/9" 或 "08/07"
+function monthOf(d) {
+  const m = parseInt(String(d).split('/')[0]);
+  return isNaN(m) ? 0 : m;
+}
+function dayOf(d) {
+  const parts = String(d).split('/');
+  return parts.length > 1 ? parseInt(parts[1]) : 0;
+}
+
+// 每日花費曲線圖（SVG 直條圖）
+function renderDailyChart(monthItems, maxDay) {
+  const daily = new Array(maxDay + 1).fill(0);
+  for (const it of monthItems) {
+    const d = dayOf(it.date);
+    if (d >= 1 && d <= maxDay) daily[d] += (it.amount || 0);
+  }
+  const max = Math.max(...daily.slice(1), 1);
+  const W = 340, H = 120, pad = 6;
+  const barW = (W - pad * 2) / maxDay;
+  let bars = '';
+  for (let d = 1; d <= maxDay; d++) {
+    const h = Math.max(3, (daily[d] / max) * (H - 24));
+    const x = pad + (d - 1) * barW;
+    const y = H - 4 - h;
+    bars += `<rect x="${x}" y="${y}" width="${Math.max(barW - 2, 1)}" height="${h}" rx="2" fill="${daily[d] ? '#f59e0b' : '#f0e0cc'}">
+      <title>${d}日：$${daily[d].toLocaleString()}</title></rect>`;
+    if (d % 5 === 0 || d === maxDay) {
+      bars += `<text x="${x + 1}" y="${H - 1}" font-size="8" fill="#8b7355">${d}</text>`;
+    }
+  }
+  // 最大值標示
+  if (max > 1) {
+    bars += `<text x="${W - 40}" y="10" font-size="9" fill="#d97706" text-anchor="end">$${max.toLocaleString()}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
+}
+
 // === 渲染 ===
 function renderAll() {
   renderNav();
@@ -371,7 +447,9 @@ function renderAll() {
 
 function renderNav() {
   const nav = document.getElementById('nav');
-  nav.innerHTML = appData.categories.map(c => `
+  nav.innerHTML = `
+    <button class="nav-btn ${currentTab==='calendar'?'active':''}" data-tab="calendar">🗓️ 行事曆</button>` +
+    appData.categories.map(c => `
     <button class="nav-btn ${c.id===currentTab?'active':''}" data-tab="${c.id}">
       ${c.icon} ${c.name.replace('事項','')}
     </button>
@@ -405,23 +483,56 @@ function renderNav() {
 }
 
 function renderMain() {
+  // 行事曆
+  if (currentTab === 'calendar') { renderCalendarMain(); return; }
+
   const main = document.getElementById('main');
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
   if (!cat) return;
 
-  const items = getItems(cat.id);
+  let items = getItems(cat.id);
   const isExpense = cat.id === 'expense';
 
-  // 收支摘要
+  // 收支摘要（本月份 + 分類 + 每日曲線圖）
   let summaryHtml = '';
   if (isExpense) {
-    const total = items.reduce((s, e) => s + (e.amount || 0), 0);
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const maxDay = now.getDate();
+    const monthItems = items.filter(it => monthOf(it.date) === curMonth);
+    const total = monthItems.reduce((s, e) => s + (e.amount || 0), 0);
+
+    // 分類統計
+    const catSum = {};
+    for (const it of monthItems) {
+      const c = it.cat || expenseCat(it.store, it.text);
+      catSum[c] = (catSum[c] || 0) + (it.amount || 0);
+    }
+    const catMax = Math.max(...Object.values(catSum), 1);
+    const catHtml = EXPENSE_CATS.map(c => {
+      const v = catSum[c] || 0;
+      if (v === 0) return '';
+      return `
+        <div class="cat-row">
+          <span class="cat-name">${c}</span>
+          <span class="cat-bar"><span class="cat-fill" style="width:${Math.round(v/catMax*100)}%"></span></span>
+          <span class="cat-amt">$${v.toLocaleString()}</span>
+        </div>`;
+    }).join('');
+
     summaryHtml = `
       <div id="expenseSummary">
-        <div class="label">總支出（含發票同步）</div>
+        <div class="label">${curMonth} 月總支出</div>
         <div class="amount">$${total.toLocaleString()}</div>
-        <div class="label">${items.length} 筆記錄</div>
+        <div class="label">${monthItems.length} 筆記錄（本月）</div>
+      </div>
+      ${catHtml ? `<div class="cat-stats">${catHtml}</div>` : ''}
+      <div class="chart-box">
+        <div class="chart-title">📈 每日花費（${curMonth}月 1-${maxDay}日）</div>
+        ${renderDailyChart(monthItems, maxDay)}
       </div>`;
+    // 本月過濾的列表
+    items = monthItems;
   }
 
   // 列表
@@ -538,9 +649,11 @@ function renderMain() {
         const textEl = document.getElementById('editText');
         const storeEl = document.getElementById('editStore');
         const amountEl = document.getElementById('editAmount');
+        const catEl = document.getElementById('editCat');
         if (textEl) it.text = textEl.value.trim() || it.text;
         if (storeEl) it.store = storeEl.value.trim() || it.store;
         if (amountEl) it.amount = parseInt(amountEl.value) || 0;
+        if (catEl) it.cat = catEl.value;
         editingId = null;
         saveData();
         renderMain();
@@ -562,12 +675,14 @@ function renderItem(cat, it) {
     const subText = (it.store && it.store !== '手動')
       ? (it.item || it.text || '')
       : (it.text !== it.item ? it.text : '');
+    const c = it.cat || expenseCat(it.store, it.text);
     return `
       <li>
         <span style="flex:1">
           <strong>${escHtml(mainName)}</strong>
           ${subText ? `<span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(subText)}</span>` : ''}
         </span>
+        <span class="cat-badge cat-${c}">${c}</span>
         <span style="font-weight:600;color:var(--danger)">$${it.amount||0}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
@@ -597,6 +712,9 @@ function renderItem(cat, it) {
 
 function renderEditForm(cat, it) {
   if (cat.id === 'expense') {
+    const curCat = it.cat || expenseCat(it.store, it.text);
+    const catOptions = EXPENSE_CATS.map(c =>
+      `<option value="${c}" ${c===curCat?'selected':''}>${c}</option>`).join('');
     return `
       <li class="edit-form">
         <div class="edit-row">
@@ -604,6 +722,10 @@ function renderEditForm(cat, it) {
           <input id="editAmount" type="number" value="${it.amount||0}" placeholder="金額">
         </div>
         <input id="editText" value="${escHtml(it.text||'')}" placeholder="品項">
+        <div class="edit-row">
+          <select id="editCat">${catOptions}</select>
+          <span style="font-size:0.8rem;color:var(--text2);align-self:center">分類</span>
+        </div>
         <div class="edit-actions">
           <button id="saveEdit" style="background:var(--accent);color:white">儲存</button>
           <button id="cancelEdit">取消</button>

@@ -9,6 +9,7 @@ DATA_DIR = os.path.join(ROOT, 'data')
 SCRIPTS = [
     ('easynote 待辦', 'sync_easynote.py'),
     ('發票載具', 'sync_invoice.py'),
+    ('行事曆', 'sync_calendar.py'),
 ]
 
 def main():
