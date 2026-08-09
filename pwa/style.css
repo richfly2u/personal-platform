@@ -1,0 +1,339 @@
+/* === 個人平台 PWA 樣式 === */
+
+:root {
+  --bg: #fff8f0;
+  --card: #ffffff;
+  --text: #3d2c1e;
+  --text2: #8b7355;
+  --accent: #f59e0b;
+  --accent2: #d97706;
+  --border: #f0e0cc;
+  --danger: #ef4444;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 80px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 頂部 */
+header {
+  padding: 16px 20px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent2);
+}
+#syncStatus {
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+
+/* 語音區 */
+#voiceSection {
+  padding: 16px 20px;
+  text-align: center;
+}
+#voiceBtn {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 1.8rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, background 0.2s;
+}
+#voiceBtn:active {
+  transform: scale(0.93);
+}
+#voiceBtn.listening {
+  background: var(--danger);
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+}
+#voiceResult {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+#voiceResult.hidden { display:none; }
+#voiceText {
+  font-size: 1rem;
+  margin-bottom: 10px;
+  text-align: left;
+  line-height: 1.5;
+}
+.category-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+.category-select select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  font-size: 0.9rem;
+}
+.category-select button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+#saveVoice {
+  background: var(--accent);
+  color: white;
+}
+#cancelVoice {
+  background: #e5e5e5;
+  color: var(--text2);
+}
+
+/* 內容區 */
+main {
+  padding: 0 20px;
+}
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+.tab-content h2 {
+  font-size: 1.1rem;
+  margin: 16px 0 10px;
+  color: var(--accent2);
+}
+
+/* 清單 */
+ul {
+  list-style: none;
+}
+li, .card {
+  background: var(--card);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.todo-check {
+  width: 20px; height: 20px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+}
+.todo-check.done {
+  background: var(--accent);
+  color: white;
+}
+.todo-text.done {
+  text-decoration: line-through;
+  color: var(--text2);
+}
+.card .meta {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin-top: 4px;
+}
+.card .del-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* 收支摘要 */
+#expenseSummary {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+#expenseSummary .amount {
+  font-size: 2rem;
+  font-weight: 700;
+}
+#expenseSummary .label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* 底部導航 */
+nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 6px 0;
+  z-index: 100;
+}
+.nav-btn {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 8px 4px;
+  font-size: 0.78rem;
+  color: var(--text2);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.nav-btn.active {
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+/* 日記卡片 */
+.diary-card {
+  background: var(--card);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.diary-card .date {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.diary-card .content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* 新增輸入框 */
+.add-form {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 24px;
+}
+.add-form input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+  background: white;
+}
+.add-form button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 編輯/刪除按鈕 */
+.edit-btn, .del-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 2px;
+  flex-shrink: 0;
+}
+.del-btn { color: var(--text2); }
+
+/* 編輯表單 */
+.edit-form {
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 8px !important;
+}
+.edit-form input {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  width: 100%;
+}
+.edit-row {
+  display: flex;
+  gap: 8px;
+}
+.edit-row input { flex: 1; }
+.edit-actions {
+  display: flex;
+  gap: 8px;
+}
+.edit-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.edit-actions button:last-child {
+  background: #e5e5e5;
+  color: var(--text2);
+}
+
+/* 空狀態 */
+.card.empty {
+  justify-content: center;
+  color: var(--text2);
+  font-size: 0.9rem;
+}
+
+/* 新增類別按鈕 */
+.add-cat-btn {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 1.1rem;
+  color: var(--accent2);
+  font-weight: 700;
+}
+
+/* 項目日期 */
+li .meta {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-top: 2px;
+}

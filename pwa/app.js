@@ -1,0 +1,489 @@
+/* === 個人平台 PWA — 主邏輯（動態類別版） === */
+
+const STORAGE_KEY = 'personal_platform_data_v2';
+
+// 預設類別
+const BUILTIN_CATEGORIES = [
+  {id: 'todo',    name: '待辦事項', icon: '✓'},
+  {id: 'diary',   name: '日記',     icon: '📅'},
+  {id: 'expense', name: '收支',     icon: '💰'},
+  {id: 'idea',    name: '靈感',     icon: '💡'}
+];
+
+// 資料結構
+let appData = {
+  categories: [...BUILTIN_CATEGORIES],
+  items: {}          // catId -> [{id, text, completed?, store?, amount?, date, source}]
+};
+
+let currentTab = 'todo';
+let editingId = null;  // 目前正在編輯的項目 id
+
+// === 初始化 ===
+async function init() {
+  loadData();
+  migrateOldData();
+  await loadSyncData();
+  renderAll();
+  setupVoice();
+}
+
+// === 資料讀寫 ===
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      if (saved.categories) appData.categories = saved.categories;
+      if (saved.items) appData.items = saved.items;
+    } catch(e) {}
+  }
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+// 舊格式遷移（v1 → v2）
+function migrateOldData() {
+  const old = localStorage.getItem('personal_platform_data');
+  if (!old) return;
+  try {
+    const d = JSON.parse(old);
+    const items = {};
+    for (const cat of BUILTIN_CATEGORIES) {
+      const key = {todo:'todos', diary:'diaries', expense:'expenses', idea:'ideas'}[cat.id];
+      if (d[key]) items[cat.id] = d[key];
+    }
+    // 合併：不覆蓋新資料
+    for (const k of Object.keys(items)) {
+      if (!appData.items[k]) appData.items[k] = items[k];
+    }
+    saveData();
+    localStorage.removeItem('personal_platform_data');
+  } catch(e) {}
+}
+
+// 確保每個類別都有陣列
+function getItems(catId) {
+  if (!appData.items[catId]) appData.items[catId] = [];
+  return appData.items[catId];
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function today() {
+  const d = new Date();
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+// === 同步資料 ===
+async function loadSyncData() {
+  try {
+    const invRes = await fetch('data/invoices.json');
+    if (invRes.ok) {
+      const invoices = await invRes.json();
+      const expenseItems = getItems('expense');
+      const existingIds = new Set(expenseItems.filter(e=>e.source==='invoice').map(e=>e.id));
+      for (const inv of invoices) {
+        if (!existingIds.has(inv.id)) {
+          expenseItems.push({
+            id: inv.id,
+            store: inv.store || '未知',
+            text: inv.item || '',
+            amount: inv.amount || 0,
+            date: inv.date || '',
+            source: 'invoice'
+          });
+        }
+      }
+    }
+  } catch(e) {}
+
+  try {
+    const todoRes = await fetch('data/todos.json');
+    if (todoRes.ok) {
+      const todosData = await todoRes.json();
+      const todoItems = getItems('todo');
+      const existingTexts = new Set(todoItems.filter(t=>t.source==='easynote').map(t=>t.text));
+      for (const item of todosData.items || []) {
+        if (!existingTexts.has(item.text)) {
+          todoItems.push({
+            id: 'esynote_'+uid(),
+            text: item.text,
+            completed: item.completed || false,
+            date: today(),
+            source: 'easynote'
+          });
+        }
+      }
+    }
+  } catch(e) {}
+
+  saveData();
+  document.getElementById('syncStatus').textContent = '已同步';
+}
+
+// === 語音輸入 ===
+function setupVoice() {
+  const btn = document.getElementById('voiceBtn');
+  const resultDiv = document.getElementById('voiceResult');
+  const voiceText = document.getElementById('voiceText');
+  const categorySelect = document.getElementById('categorySelect');
+  const saveBtn = document.getElementById('saveVoice');
+  const cancelBtn = document.getElementById('cancelVoice');
+
+  // 填入分類選單
+  categorySelect.innerHTML = appData.categories.map(c =>
+    `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    btn.style.display = 'none';
+    return;
+  }
+
+  let recognition = null;
+  const segments = {};  // 結果索引 -> 文字（覆寫制）
+
+  btn.addEventListener('click', () => {
+    if (recognition && btn.classList.contains('listening')) {
+      recognition.stop();
+      return;
+    }
+    if (btn.classList.contains('listening')) return;
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'zh-TW';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    btn.classList.add('listening');
+    btn.textContent = '🔴';
+    for (const k in segments) delete segments[k];
+
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const r = event.results[i];
+        if (r.isFinal) {
+          segments[i] = r[0].transcript;
+        } else {
+          interim += r[0].transcript;
+        }
+      }
+      const full = Object.keys(segments).sort((a,b)=>a-b).map(k=>segments[k]).join('');
+      voiceText.textContent = full + interim;
+      resultDiv.classList.remove('hidden');
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error !== 'no-speech') {
+        btn.classList.remove('listening');
+        btn.textContent = '🎤';
+      }
+    };
+
+    recognition.onend = () => {
+      btn.classList.remove('listening');
+      btn.textContent = '🎤';
+      const full = Object.keys(segments).sort((a,b)=>a-b).map(k=>segments[k]).join('');
+      if (full.trim()) {
+        voiceText.textContent = full.trim();
+        // 自動分類（只對內建四類）
+        const auto = classifyText(full.trim());
+        if (categorySelect.querySelector(`option[value="${auto}"]`)) {
+          categorySelect.value = auto;
+        }
+      }
+    };
+
+    recognition.start();
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const text = voiceText.textContent.trim();
+    const catId = categorySelect.value;
+    if (!text) return;
+
+    if (catId === 'expense') {
+      const amtMatch = text.match(/(\d+)\s*元/);
+      addExpense(text, amtMatch ? parseInt(amtMatch[1]) : 0);
+    } else {
+      getItems(catId).unshift({
+        id: uid(), text, date: today(), source: 'voice', completed: false
+      });
+    }
+    saveData();
+    renderAll();
+    resultDiv.classList.add('hidden');
+    voiceText.textContent = '';
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    resultDiv.classList.add('hidden');
+    voiceText.textContent = '';
+  });
+}
+
+function classifyText(text) {
+  const t = text;
+  if (/[\d]+元|[\d]+塊|買了|付了|花了|消費|支出|收入|付款|繳費|購物|帳單|刷卡|現金|轉帳|儲值|加油|賣了|賺了|領錢|提款|費用|價格|多少錢/.test(t)) return 'expense';
+  if (/記得|要做|待辦|明天|等一下|晚點|之後|提醒|別忘了|需要|必須|得去|要去|準備|處理|完成|還沒|尚未|找時間/.test(t)) return 'todo';
+  if (/今天|昨天|剛剛|早上|下午|晚上|去了|做了|吃了|看到|聽到|遇到|覺得|感覺|心情|發生|終於|已經/.test(t)) return 'diary';
+  if (/想法|點子|靈感|創意|設計|可以試|或許|也許|如果|想像|發想|構想|計畫|專案|新點子|有意思|有趣/.test(t)) return 'idea';
+  if (t.length <= 8) return 'todo';
+  if (t.length >= 30) return 'diary';
+  return 'idea';
+}
+
+function addExpense(text, amount) {
+  getItems('expense').unshift({
+    id: uid(), store: '手動', text, amount, date: today(), source: 'voice'
+  });
+}
+
+// === 渲染 ===
+function renderAll() {
+  renderNav();
+  renderMain();
+}
+
+function renderNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = appData.categories.map(c => `
+    <button class="nav-btn ${c.id===currentTab?'active':''}" data-tab="${c.id}">
+      ${c.icon} ${c.name.replace('事項','')}
+    </button>
+  `).join('') + `
+    <button class="nav-btn add-cat-btn" title="新增類別">＋</button>`;
+
+  nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTab = btn.dataset.tab;
+      editingId = null;
+      renderAll();
+    });
+  });
+
+  nav.querySelector('.add-cat-btn').addEventListener('click', addCategory);
+}
+
+function renderMain() {
+  const main = document.getElementById('main');
+  const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
+  if (!cat) return;
+
+  const items = getItems(cat.id);
+  const isExpense = cat.id === 'expense';
+
+  // 收支摘要
+  let summaryHtml = '';
+  if (isExpense) {
+    const total = items.reduce((s, e) => s + (e.amount || 0), 0);
+    summaryHtml = `
+      <div id="expenseSummary">
+        <div class="label">總支出（含發票同步）</div>
+        <div class="amount">$${total.toLocaleString()}</div>
+        <div class="label">${items.length} 筆記錄</div>
+      </div>`;
+  }
+
+  // 列表
+  let listHtml = '';
+  if (items.length === 0) {
+    listHtml = `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
+  } else {
+    const sorted = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    listHtml = sorted.map(it => {
+      if (editingId === it.id) {
+        return renderEditForm(cat, it);
+      }
+      return renderItem(cat, it);
+    }).join('');
+  }
+
+  // 新增輸入框
+  const addForm = isExpense
+    ? `<div class="add-form">
+         <input id="addText" placeholder="例如：全家 買飲料 50元">
+         <button id="addBtn">新增</button>
+       </div>`
+    : `<div class="add-form">
+         <input id="addText" placeholder="輸入${cat.name}內容...">
+         <button id="addBtn">新增</button>
+       </div>`;
+
+  main.innerHTML = `
+    <section class="tab-content active">
+      <h2>${cat.icon} ${cat.name}</h2>
+      ${summaryHtml}
+      <div id="itemList">${listHtml}</div>
+      ${addForm}
+    </section>`;
+
+  // 綁定事件
+  const addBtn = document.getElementById('addBtn');
+  const addText = document.getElementById('addText');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      const text = addText.value.trim();
+      if (!text) return;
+      if (isExpense) {
+        const amt = text.match(/(\d+)\s*元/);
+        addExpense(text, amt ? parseInt(amt[1]) : 0);
+      } else {
+        getItems(cat.id).unshift({id: uid(), text, date: today(), source: 'manual', completed: false});
+      }
+      saveData();
+      renderMain();
+    });
+    addText.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addBtn.click();
+    });
+  }
+
+  // 列表事件
+  const list = document.getElementById('itemList');
+  if (list) {
+    // 勾選
+    list.querySelectorAll('.todo-check').forEach(el => {
+      el.addEventListener('click', () => {
+        const it = items.find(i => i.id === el.dataset.id);
+        if (it) { it.completed = !it.completed; saveData(); renderMain(); }
+      });
+    });
+    // 編輯
+    list.querySelectorAll('.edit-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        editingId = el.dataset.id;
+        renderMain();
+      });
+    });
+    // 刪除
+    list.querySelectorAll('.del-btn').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        const idx = items.findIndex(i => i.id === id);
+        if (idx >= 0) {
+          items.splice(idx, 1);
+          saveData();
+          renderMain();
+        }
+      });
+    });
+    // 編輯表單
+    const saveEdit = document.getElementById('saveEdit');
+    if (saveEdit) {
+      saveEdit.addEventListener('click', () => {
+        const it = items.find(i => i.id === editingId);
+        if (!it) return;
+        const textEl = document.getElementById('editText');
+        const storeEl = document.getElementById('editStore');
+        const amountEl = document.getElementById('editAmount');
+        if (textEl) it.text = textEl.value.trim() || it.text;
+        if (storeEl) it.store = storeEl.value.trim() || it.store;
+        if (amountEl) it.amount = parseInt(amountEl.value) || 0;
+        editingId = null;
+        saveData();
+        renderMain();
+      });
+    }
+    const cancelEdit = document.getElementById('cancelEdit');
+    if (cancelEdit) {
+      cancelEdit.addEventListener('click', () => {
+        editingId = null;
+        renderMain();
+      });
+    }
+  }
+}
+
+function renderItem(cat, it) {
+  if (cat.id === 'expense') {
+    return `
+      <li>
+        <span style="flex:1">
+          <strong>${escHtml(it.store || '手動')}</strong>
+          <span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(it.text || '')}</span>
+        </span>
+        <span style="font-weight:600;color:var(--danger)">$${it.amount||0}</span>
+        <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
+        <button class="edit-btn" data-id="${it.id}">✏️</button>
+        <button class="del-btn" data-id="${it.id}">🗑</button>
+      </li>`;
+  }
+  if (cat.id === 'todo') {
+    return `
+      <li>
+        <span class="todo-check ${it.completed?'done':''}" data-id="${it.id}">✓</span>
+        <span class="todo-text ${it.completed?'done':''}" style="flex:1">${escHtml(it.text)}</span>
+        <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
+        <button class="edit-btn" data-id="${it.id}">✏️</button>
+        <button class="del-btn" data-id="${it.id}">🗑</button>
+      </li>`;
+  }
+  return `
+    <li>
+      <span style="flex:1">
+        ${escHtml(it.text)}
+        <span class="meta">${it.date||''}</span>
+      </span>
+      <button class="edit-btn" data-id="${it.id}">✏️</button>
+      <button class="del-btn" data-id="${it.id}">🗑</button>
+    </li>`;
+}
+
+function renderEditForm(cat, it) {
+  if (cat.id === 'expense') {
+    return `
+      <li class="edit-form">
+        <div class="edit-row">
+          <input id="editStore" value="${escHtml(it.store||'')}" placeholder="商店">
+          <input id="editAmount" type="number" value="${it.amount||0}" placeholder="金額">
+        </div>
+        <input id="editText" value="${escHtml(it.text||'')}" placeholder="品項">
+        <div class="edit-actions">
+          <button id="saveEdit" style="background:var(--accent);color:white">儲存</button>
+          <button id="cancelEdit">取消</button>
+        </div>
+      </li>`;
+  }
+  return `
+    <li class="edit-form">
+      <input id="editText" value="${escHtml(it.text)}">
+      <div class="edit-actions">
+        <button id="saveEdit" style="background:var(--accent);color:white">儲存</button>
+        <button id="cancelEdit">取消</button>
+      </div>
+    </li>`;
+}
+
+// === 新增類別 ===
+function addCategory() {
+  const name = prompt('新類別名稱：');
+  if (!name || !name.trim()) return;
+  const id = 'cat_' + uid();
+  appData.categories.push({id, name: name.trim(), icon: '📁'});
+  appData.items[id] = [];
+  currentTab = id;
+  saveData();
+  renderAll();
+}
+
+// === 小工具 ===
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// === Service Worker ===
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// === 啟動 ===
+document.addEventListener('DOMContentLoaded', init);

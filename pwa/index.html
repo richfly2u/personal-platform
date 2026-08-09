@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f59e0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>個人平台</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 頂部 -->
+<header>
+  <h1>個人平台</h1>
+  <span id="syncStatus"></span>
+</header>
+
+<!-- 語音輸入區 -->
+<section id="voiceSection">
+  <button id="voiceBtn" title="語音輸入">🎤</button>
+  <div id="voiceResult" class="hidden">
+    <p id="voiceText"></p>
+    <div class="category-select">
+      <span>分類：</span>
+      <select id="categorySelect"></select>
+      <button id="saveVoice">儲存</button>
+      <button id="cancelVoice">取消</button>
+    </div>
+  </div>
+</section>
+
+<!-- 主要內容區（JS 動態產生） -->
+<main id="main"></main>
+
+<!-- 底部導航（JS 動態產生） -->
+<nav id="nav"></nav>
+
+<script src="app.js?v=5"></script>
+</body>
+</html>
