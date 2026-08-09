@@ -213,61 +213,72 @@ function setupVoice() {
   }
 
   let recognition = null;
-  const segments = {};  // 結果索引 -> 文字（覆寫制）
+  let finalText = '';
+  let stoppedByUser = false;
 
-  btn.addEventListener('click', () => {
-    if (recognition && btn.classList.contains('listening')) {
-      recognition.stop();
-      return;
+  function stopListening() {
+    btn.classList.remove('listening');
+    btn.textContent = '🎤';
+    if (finalText.trim()) {
+      voiceText.textContent = finalText.trim();
+      const auto = classifyText(finalText.trim());
+      if (categorySelect.querySelector(`option[value="${auto}"]`)) {
+        categorySelect.value = auto;
+      }
     }
-    if (btn.classList.contains('listening')) return;
+  }
 
+  function startListening() {
+    stoppedByUser = false;
     recognition = new SpeechRecognition();
     recognition.lang = 'zh-TW';
     recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.continuous = false;   // 關鍵：每段話乾淨單一結果，不重複
 
     btn.classList.add('listening');
     btn.textContent = '🔴';
-    for (const k in segments) delete segments[k];
 
     recognition.onresult = (event) => {
       let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const r = event.results[i];
         if (r.isFinal) {
-          segments[i] = r[0].transcript;
+          finalText += r[0].transcript;
         } else {
           interim += r[0].transcript;
         }
       }
-      const full = Object.keys(segments).sort((a,b)=>a-b).map(k=>segments[k]).join('');
-      voiceText.textContent = full + interim;
+      voiceText.textContent = finalText + interim;
       resultDiv.classList.remove('hidden');
     };
 
     recognition.onerror = (e) => {
-      if (e.error !== 'no-speech') {
-        btn.classList.remove('listening');
-        btn.textContent = '🎤';
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        stopListening();
       }
     };
 
     recognition.onend = () => {
-      btn.classList.remove('listening');
-      btn.textContent = '🎤';
-      const full = Object.keys(segments).sort((a,b)=>a-b).map(k=>segments[k]).join('');
-      if (full.trim()) {
-        voiceText.textContent = full.trim();
-        // 自動分類（只對內建四類）
-        const auto = classifyText(full.trim());
-        if (categorySelect.querySelector(`option[value="${auto}"]`)) {
-          categorySelect.value = auto;
-        }
+      if (!stoppedByUser) {
+        // 沒按停止 → 自動續聽（無縫接下一段話）
+        setTimeout(startListening, 400);
+      } else {
+        stopListening();
       }
     };
 
     recognition.start();
+  }
+
+  btn.addEventListener('click', () => {
+    if (recognition && btn.classList.contains('listening')) {
+      stoppedByUser = true;
+      recognition.stop();
+      return;
+    }
+    if (btn.classList.contains('listening')) return;
+    finalText = '';
+    startListening();
   });
 
   saveBtn.addEventListener('click', () => {
