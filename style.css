@@ -291,6 +291,26 @@ li, .card {
 .cal-moy {
   font-weight: 700;
   font-size: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+.cal-lunmon {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--accent2);
+}
+.cal-lunar {
+  display: block;
+  font-size: 0.58rem;
+  color: #b0a08c;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+.cal-lunar.lunar-mstart {
+  color: #d97706;
+  font-weight: 700;
 }
 .cal-today-btn {
   font-size: 0.8rem !important;
