@@ -30,7 +30,8 @@ async function init() {
 }
 
 // === 同步按鈕（🔄）===
-const SYNC_HOST = 'https://192.168.0.75:9443';
+const isLocalHost = location.hostname === '192.168.0.75';
+const SYNC_HOST = isLocalHost ? location.origin : 'https://192.168.0.75:9443';
 
 function setupSyncButton() {
   const btn = document.getElementById('syncBtn');
@@ -53,6 +54,14 @@ function setupSyncButton() {
       }
     } catch (e) {
       statusEl.textContent = '需在家裡 WiFi';
+      // 非本機版：引導開本機版（同源 fetch 才不會被憑證擋）
+      if (!isLocalHost) {
+        setTimeout(() => {
+          if (confirm('同步需要連到家裡的本機伺服器（192.168.0.75）。\n要打開本機版嗎？')) {
+            window.open('https://192.168.0.75:9443', '_blank');
+          }
+        }, 500);
+      }
     }
     btn.textContent = '🔄';
     setTimeout(() => { statusEl.textContent = ''; }, 4000);
