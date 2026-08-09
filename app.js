@@ -422,22 +422,23 @@ function renderDailyChart(monthItems, maxDay) {
     if (d >= 1 && d <= maxDay) daily[d] += (it.amount || 0);
   }
   const max = Math.max(...daily.slice(1), 1);
-  const W = 340, H = 120, pad = 6;
+  const W = 350, H = 130, pad = 6;
   const barW = (W - pad * 2) / maxDay;
   let bars = '';
   for (let d = 1; d <= maxDay; d++) {
-    const h = Math.max(3, (daily[d] / max) * (H - 24));
+    const h = Math.max(3, (daily[d] / max) * (H - 34));
     const x = pad + (d - 1) * barW;
-    const y = H - 4 - h;
+    const y = H - 18 - h;
     bars += `<rect x="${x}" y="${y}" width="${Math.max(barW - 2, 1)}" height="${h}" rx="2" fill="${daily[d] ? '#f59e0b' : '#f0e0cc'}">
       <title>${d}日：$${daily[d].toLocaleString()}</title></rect>`;
-    if (d % 5 === 0 || d === maxDay) {
-      bars += `<text x="${x + 1}" y="${H - 1}" font-size="8" fill="#8b7355">${d}</text>`;
-    }
+    // 每天標日期（置中於該格；每5天+頭尾加粗加深）
+    const tx = x + (barW - 2) / 2;
+    const isKey = d === 1 || d === maxDay || d % 5 === 0;
+    bars += `<text x="${tx}" y="${H - 5}" font-size="${isKey ? 9 : 7}" font-weight="${isKey ? 700 : 400}" fill="${isKey ? '#8b7355' : '#c9b89e'}" text-anchor="middle">${d}</text>`;
   }
   // 最大值標示
   if (max > 1) {
-    bars += `<text x="${W - 40}" y="10" font-size="9" fill="#d97706" text-anchor="end">$${max.toLocaleString()}</text>`;
+    bars += `<text x="${W - 8}" y="12" font-size="9" fill="#d97706" text-anchor="end">$${max.toLocaleString()}</text>`;
   }
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
 }
