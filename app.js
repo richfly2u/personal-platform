@@ -376,7 +376,8 @@ function renderNav() {
       ${c.icon} ${c.name.replace('事項','')}
     </button>
   `).join('') + `
-    <button class="nav-btn add-cat-btn" title="新增類別">＋</button>`;
+    <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
+    <button class="nav-btn dash-btn" id="dashBtn" title="每日行動儀表板">📊 儀表板</button>`;
 
   nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -387,6 +388,20 @@ function renderNav() {
   });
 
   nav.querySelector('.add-cat-btn').addEventListener('click', addCategory);
+
+  // 儀表板切換：在 iframe 內→關閉上層遮罩；獨立開→直接跳轉
+  const dashBtn = document.getElementById('dashBtn');
+  if (dashBtn) {
+    dashBtn.addEventListener('click', () => {
+      if (window.self !== window.top) {
+        try {
+          window.top.document.getElementById('ppOverlay').style.display = 'none';
+          return;
+        } catch(e) {}
+      }
+      window.location.href = 'https://richfly2u.github.io/daily-dashboard/';
+    });
+  }
 }
 
 function renderMain() {

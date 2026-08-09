@@ -330,6 +330,15 @@ nav {
   font-weight: 700;
 }
 
+/* 儀表板切換按鈕 */
+.dash-btn {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  color: #6c5ce7;
+  font-weight: 700;
+  border-left: 1px solid var(--border);
+}
+
 /* 項目日期 */
 li .meta {
   display: block;
