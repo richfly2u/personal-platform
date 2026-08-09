@@ -5,3 +5,4 @@ key.pem
 __pycache__/
 data/*_dump.xml
 data/debug_*.xml
+data/cal-events-local.json

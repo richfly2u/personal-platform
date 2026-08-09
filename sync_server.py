@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """個人平台同步伺服器 — HTTPS + /sync + /api/todo-done"""
-import http.server, ssl, os, json, re, subprocess, sys, threading, time
+import http.server, ssl, os, json, re, subprocess, sys, threading, time, datetime
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PORT = 9443
@@ -18,9 +18,17 @@ MIME = {
 EASYNOTE_PKG = 'easynotes.notes.notepad.notebook.privatenotes.note'
 EASYNOTE_ACT = 'notes.easy.android.mynotes.ui.activities.SplashActivity'
 
-def sh(cmd, timeout=15):
+def sh(cmd, timeout=20):
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        return r.stdout.strip()
+    except Exception as e:
+        return str(e)
+
+def sh_bash(cmd, timeout=20):
+    """用 bash 執行（adb.exe，避免 cmd 引號轉義問題）"""
+    try:
+        r = subprocess.run(['bash', '-lc', cmd], capture_output=True, text=True, timeout=timeout)
         return r.stdout.strip()
     except Exception as e:
         return str(e)
@@ -107,6 +115,83 @@ def todo_done(text):
     adb_key('KEYCODE_BACK'); time.sleep(0.3)
     return {'ok': target_checked, 'note': '已勾選' if target_checked else '未勾選'}
 
+CALENDAR_ID = '15'  # alan行事曆（Jorte 顯示的行事曆）
+TZ8 = datetime.timezone(datetime.timedelta(hours=8))  # 台灣
+
+def _day_ms(y, m, d):
+    """當天 GMT+8 午夜 epoch ms（與系統行事曆儲存值一致）"""
+    start = datetime.datetime(y, m, d, 0, 0, 0, tzinfo=TZ8)
+    return int(start.timestamp() * 1000)
+
+def cal_add(title, date):
+    """寫入系統行事曆 → Jorte 小工具立即顯示。回傳手機端 _id 供日後刪除"""
+    try:
+        y, m, d = [int(x) for x in date.split('-')]
+        # 用當天 UTC 午夜（provider 會以 Asia/Taipei 解讀並儲存為正確的 UTC instant）
+        start_ms = int(datetime.datetime(y, m, d, 0, 0, 0, tzinfo=datetime.timezone.utc).timestamp() * 1000)
+        end_ms = start_ms + 86400000
+    except Exception:
+        return {'ok': False, 'error': '日期格式錯誤'}
+    cmd = (f'adb.exe shell "content insert --uri content://com.android.calendar/events '
+           f'--bind calendar_id:i:{CALENDAR_ID} '
+           f'--bind title:s:{title} '
+           f'--bind dtstart:l:{start_ms} '
+           f'--bind dtend:l:{end_ms} '
+           f'--bind allDay:i:1 '
+           f'--bind eventTimezone:s:Asia/Taipei"')
+    sh_bash(cmd, 15)
+    # 查回實際 _id（取最新一筆同名）
+    q = sh_bash(
+        f'adb.exe shell "content query --uri content://com.android.calendar/events '
+        f'--projection _id:dtstart --where \\\"title=\'{title}\'\\\""', 15)
+    phone_id = None
+    for line in q.splitlines():
+        m = re.search(r'_id=(\d+)', line)
+        if m:
+            phone_id = int(m.group(1))  # 取最後一筆 = 最新
+    # 記錄到本機檔（供日後刪除比對）
+    local_file = os.path.join(ROOT, 'data', 'cal-events-local.json')
+    events = []
+    if os.path.exists(local_file):
+        try:
+            events = json.load(open(local_file, encoding='utf-8'))
+        except Exception:
+            events = []
+    events.append({'title': title, 'date': date, 'phone_id': phone_id})
+    with open(local_file, 'w', encoding='utf-8') as f:
+        json.dump(events, f, ensure_ascii=False)
+    return {'ok': True, 'note': f'已寫入行事曆：{title} ({date})'}
+
+def cal_del(title, date):
+    """刪除系統行事曆事件（用記錄的 phone_id）"""
+    local_file = os.path.join(ROOT, 'data', 'cal-events-local.json')
+    phone_id = None
+    if os.path.exists(local_file):
+        try:
+            events = json.load(open(local_file, encoding='utf-8'))
+        except Exception:
+            events = []
+        for e in events:
+            if e.get('title') == title and e.get('date') == date:
+                phone_id = e.get('phone_id')
+        events = [e for e in events if not (e.get('title') == title and e.get('date') == date)]
+        with open(local_file, 'w', encoding='utf-8') as f:
+            json.dump(events, f, ensure_ascii=False)
+    if phone_id:
+        sh_bash(f'adb.exe shell "content delete --uri content://com.android.calendar/events '
+                f'--where \\\"_id={phone_id}\\\""', 15)
+        return {'ok': True, 'note': f'已刪除：{title} ({date})'}
+    # 沒有記錄 → 用 title+dtstart 補刪
+    try:
+        y, m, d = [int(x) for x in date.split('-')]
+        start_ms = int(datetime.datetime(y, m, d, 0, 0, 0, tzinfo=datetime.timezone.utc).timestamp() * 1000)
+    except Exception:
+        return {'ok': False, 'error': '日期格式錯誤'}
+    sh_bash(
+        f"adb.exe shell \"content delete --uri content://com.android.calendar/events "
+        f"--where \\\"title='{title}' AND dtstart={start_ms}\\\"\"", 15)
+    return {'ok': True, 'note': f'已刪除（無記錄）：{title} ({date})'}
+
 def run_sync():
     """跑 sync_all.py（含 git push）"""
     script = os.path.join(ROOT, 'sync', 'sync_all.py')
@@ -165,6 +250,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     return self._json({'ok': False, 'error': '缺 text'})
                 result = todo_done(text)
                 return self._json(result)
+            except Exception as e:
+                return self._json({'ok': False, 'error': str(e)})
+        if url == '/api/cal-add':
+            length = int(self.headers.get('Content-Length', 0))
+            try:
+                body = json.loads(self.rfile.read(length) or b'{}')
+                title = body.get('title', '')
+                date = body.get('date', '')
+                if not title or not date:
+                    return self._json({'ok': False, 'error': '缺 title/date'})
+                return self._json(cal_add(title, date))
+            except Exception as e:
+                return self._json({'ok': False, 'error': str(e)})
+        if url == '/api/cal-del':
+            length = int(self.headers.get('Content-Length', 0))
+            try:
+                body = json.loads(self.rfile.read(length) or b'{}')
+                title = body.get('title', '')
+                date = body.get('date', '')
+                if not title or not date:
+                    return self._json({'ok': False, 'error': '缺 title/date'})
+                return self._json(cal_del(title, date))
             except Exception as e:
                 return self._json({'ok': False, 'error': str(e)})
         self._serve_file(url)

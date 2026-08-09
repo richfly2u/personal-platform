@@ -80,10 +80,28 @@ let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();   // 0-based
 let calSelectedDay = null;              // 'YYYY-MM-DD'
 
+// 回寫行事曆到手機（Jorte 小工具即時顯示）
+async function postCal(mode, title, date) {
+  try {
+    const resp = await fetch(`${SYNC_HOST}/api/cal-${mode}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({title, date})
+    });
+    const data = await resp.json();
+    if (!data.ok) console.log('行事曆回寫失敗:', data.error);
+  } catch(e) {
+    console.log('行事曆回寫需在家裡 WiFi:', e.message);
+  }
+}
+
 function calEventsFor(dateStr) {
   const synced = (appData.syncEvents || []).filter(e => e.date === dateStr && calVisible(e.calendar));
   const local = (appData.calEvents || []).filter(e => e.date === dateStr);
-  return {synced, local};
+  // 去重：本機已存在的行程（同 title），不重複顯示同步版
+  const localKeys = new Set(local.map(e => e.title));
+  const syncedDedup = synced.filter(e => !localKeys.has(e.title));
+  return {synced: syncedDedup, local};
 }
 
 function renderCalendarMain() {
@@ -199,6 +217,7 @@ function renderCalendarMain() {
       if (!appData.calEvents) appData.calEvents = [];
       appData.calEvents.push({id: uid(), title, date: calSelectedDay, calendar: '我的行程'});
       saveData();
+      postCal('add', title, calSelectedDay);   // 回寫手機行事曆
       renderMain();
     };
     newEvBtn.addEventListener('click', add);
@@ -208,8 +227,10 @@ function renderCalendarMain() {
   main.querySelectorAll('.ev-del').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
+      const ev = (appData.calEvents || []).find(e => e.id === id);
       appData.calEvents = (appData.calEvents || []).filter(e => e.id !== id);
       saveData();
+      if (ev) postCal('del', ev.title, ev.date);   // 同步刪除手機行事曆
       renderMain();
     });
   });

@@ -37,8 +37,8 @@ def main():
     cals = parse_rows(cal_text)
     cal_names = {r['_id']: r.get('name', '?') for r in cals}
 
-    # 事件（全部）
-    ev_text = sh('adb shell "content query --uri content://com.android.calendar/events --projection calendar_id:title:dtstart:allDay"')
+    # 事件（全部，排除已刪除）
+    ev_text = sh('adb shell "content query --uri content://com.android.calendar/events --projection calendar_id:title:dtstart:allDay --where \\"deleted=0\\""')
     events = parse_rows(ev_text)
 
     result = []
