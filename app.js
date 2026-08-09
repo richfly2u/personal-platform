@@ -12,10 +12,22 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測 ===
 // 每次開啟時檢查線上 version.txt，不同就重新整理（避免舊快取）
-const APP_VERSION = '16';
+// 防呆：同一版本 30 秒內只重載一次，避免無限迴圈
+const APP_VERSION = '17';
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
-  .then(t => { if (t.trim() && t.trim() !== APP_VERSION) location.reload(); })
+  .then(t => {
+    const v = t.trim();
+    if (v && v !== APP_VERSION) {
+      const lastVer = localStorage.getItem('pp_reload_ver');
+      const lastAt = parseInt(localStorage.getItem('pp_reload_at') || '0', 10);
+      if (lastVer !== v && Date.now() - lastAt > 30000) {
+        localStorage.setItem('pp_reload_ver', v);
+        localStorage.setItem('pp_reload_at', String(Date.now()));
+        location.reload();
+      }
+    }
+  })
   .catch(() => {});
 
 // 資料結構
