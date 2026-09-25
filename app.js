@@ -174,9 +174,15 @@ async function loadSyncData() {
     if (invRes.ok) {
       const invoices = await invRes.json();
       const expenseItems = getItems('expense');
-      const existingIds = new Set(expenseItems.filter(e=>e.source==='invoice').map(e=>e.id));
+      const existingById = new Map(expenseItems.filter(e=>e.source==='invoice').map(e=>[e.id, e]));
       for (const inv of invoices) {
-        if (!existingIds.has(inv.id)) {
+        if (existingById.has(inv.id)) {
+          // 更新既有發票的明細（保留使用者手動改的 store/date）
+          const existing = existingById.get(inv.id);
+          existing.items = inv.items || existing.items || [];
+          if (inv.amount != null) existing.amount = inv.amount;
+          if (inv.item) existing.text = inv.item;
+        } else {
           expenseItems.push({
             id: inv.id,
             store: inv.store || '未知',
