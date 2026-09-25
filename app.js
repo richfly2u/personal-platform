@@ -28,6 +28,7 @@ let appData = {
 
 let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
+let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 
 // === 初始化 ===
 async function init() {
@@ -89,7 +90,8 @@ async function reloadSyncData() {
       for (const inv of invoices) {
         appData.items.expense.push({
           id: inv.id, store: inv.store || '未知', text: inv.item || '',
-          amount: inv.amount || 0, date: inv.date || '', source: 'invoice'
+          amount: inv.amount || 0, date: inv.date || '', source: 'invoice',
+          items: inv.items || []
         });
       }
     }
@@ -181,7 +183,8 @@ async function loadSyncData() {
             text: inv.item || '',
             amount: inv.amount || 0,
             date: inv.date || '',
-            source: 'invoice'
+            source: 'invoice',
+            items: inv.items || []
           });
         }
       }
@@ -444,6 +447,28 @@ function dayOf(d) {
   return parts.length > 1 ? parseInt(parts[1]) : 0;
 }
 
+// 收支月份切換
+function shiftExpenseMonth(delta) {
+  if (!expenseView.month) {
+    const now = new Date();
+    expenseView.year = now.getFullYear();
+    expenseView.month = now.getMonth() + 1;
+  }
+  let m = expenseView.month + delta;
+  let y = expenseView.year;
+  if (m < 1) { m = 12; y -= 1; }
+  if (m > 12) { m = 1; y += 1; }
+  expenseView.month = m;
+  expenseView.year = y;
+  renderMain();
+}
+function resetExpenseMonth() {
+  const now = new Date();
+  expenseView.year = now.getFullYear();
+  expenseView.month = now.getMonth() + 1;
+  renderMain();
+}
+
 // 每日花費曲線圖（SVG 直條圖）
 function renderDailyChart(monthItems, maxDay) {
   const daily = new Array(maxDay + 1).fill(0);
@@ -460,7 +485,7 @@ function renderDailyChart(monthItems, maxDay) {
     const x = pad + (d - 1) * barW;
     const y = H - 18 - h;
     bars += `<rect x="${x}" y="${y}" width="${Math.max(barW - 2, 1)}" height="${h}" rx="2" fill="${daily[d] ? '#f59e0b' : '#f0e0cc'}">
-      <title>${d}日：$${daily[d].toLocaleString()}</title></rect>`;
+      <title>${d}日：NT$${daily[d].toLocaleString()}</title></rect>`;
     // 每天標日期（置中於該格；每5天+頭尾加粗加深）
     const tx = x + (barW - 2) / 2;
     const isKey = d === 1 || d === maxDay || d % 5 === 0;
@@ -468,7 +493,7 @@ function renderDailyChart(monthItems, maxDay) {
   }
   // 最大值標示
   if (max > 1) {
-    bars += `<text x="${W - 8}" y="12" font-size="9" fill="#d97706" text-anchor="end">$${max.toLocaleString()}</text>`;
+    bars += `<text x="${W - 8}" y="12" font-size="9" fill="#d97706" text-anchor="end">NT$${max.toLocaleString()}</text>`;
   }
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
 }
@@ -527,9 +552,16 @@ function renderMain() {
   let summaryHtml = '';
   if (isExpense) {
     const now = new Date();
-    const curMonth = now.getMonth() + 1;
-    const maxDay = now.getDate();
-    const monthItems = items.filter(it => monthOf(it.date) === curMonth);
+    if (!expenseView.month) {
+      expenseView.year = now.getFullYear();
+      expenseView.month = now.getMonth() + 1;
+    }
+    const vYear = expenseView.year;
+    const vMonth = expenseView.month;
+    const daysInMonth = new Date(vYear, vMonth, 0).getDate();
+    const isCurMonth = (vYear === now.getFullYear() && vMonth === now.getMonth() + 1);
+    const maxDay = isCurMonth ? now.getDate() : daysInMonth;
+    const monthItems = items.filter(it => monthOf(it.date) === vMonth);
     // 收入/支出分開
     const expItems = monthItems.filter(it => (it.type || 'expense') !== 'income');
     const incItems = monthItems.filter(it => (it.type || 'expense') === 'income');
@@ -551,23 +583,28 @@ function renderMain() {
         <div class="cat-row">
           <span class="cat-name">${c}</span>
           <span class="cat-bar"><span class="cat-fill" style="width:${Math.round(v/catMax*100)}%"></span></span>
-          <span class="cat-amt">$${v.toLocaleString()}</span>
+          <span class="cat-amt">NT$${v.toLocaleString()}</span>
         </div>`;
     }).join('');
 
     summaryHtml = `
       <div id="expenseSummary">
-        <div class="label">${curMonth} 月收支</div>
-        <div class="summary-row">
-          <div class="sum-col sum-inc"><span class="sum-label">收入</span><span class="sum-income">$${incTotal.toLocaleString()}</span></div>
-          <div class="sum-col sum-exp"><span class="sum-label">支出</span><span class="sum-expense">$${expTotal.toLocaleString()}</span></div>
-          <div class="sum-col sum-bal"><span class="sum-label">結餘</span><span class="sum-balance ${balance>=0?'pos':'neg'}">$${balance.toLocaleString()}</span></div>
+        <div class="month-nav">
+          <button class="month-nav-btn" onclick="shiftExpenseMonth(-1)">‹</button>
+          <span class="month-nav-label">${vYear}年${vMonth}月</span>
+          <button class="month-nav-btn" onclick="shiftExpenseMonth(1)">›</button>
         </div>
-        <div class="label">${monthItems.length} 筆（本月）</div>
+        ${!isCurMonth ? `<div class="month-back" onclick="resetExpenseMonth()">回到本月</div>` : ''}
+        <div class="summary-row">
+          <div class="sum-col sum-inc"><span class="sum-label">收入</span><span class="sum-income">NT$${incTotal.toLocaleString()}</span></div>
+          <div class="sum-col sum-exp"><span class="sum-label">支出</span><span class="sum-expense">NT$${expTotal.toLocaleString()}</span></div>
+          <div class="sum-col sum-bal"><span class="sum-label">結餘</span><span class="sum-balance ${balance>=0?'pos':'neg'}">${balance<0?'-':''}NT$${Math.abs(balance).toLocaleString()}</span></div>
+        </div>
+        <div class="label">${monthItems.length} 筆</div>
       </div>
       ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}
       <div class="chart-box">
-        <div class="chart-title">📈 每日花費（${curMonth}月 1-${maxDay}日）</div>
+        <div class="chart-title">📈 每日花費（${vMonth}月 1-${maxDay}日）</div>
         ${renderDailyChart(expItems, maxDay)}
       </div>`;
     // 本月過濾的列表
@@ -718,6 +755,14 @@ function renderItem(cat, it) {
       : (it.text !== it.item ? it.text : '');
     const isIncome = (it.type || 'expense') === 'income';
     const c = isIncome ? '收入' : (it.cat || expenseCat(it.store, it.text));
+    const itemsHtml = (it.items && it.items.length > 1)
+      ? `<details class="inv-items"><summary>明細 ${it.items.length} 項</summary>${
+          it.items.map(x => {
+            const amt = (x.amount >= 0 ? '' : '-') + 'NT$' + Math.abs(x.amount);
+            return `<div class="inv-item"><span class="inv-name">${escHtml(x.name)}</span><span class="inv-qty">×${x.qty}</span><span class="inv-amt">${amt}</span></div>`;
+          }).join('')
+        }</details>`
+      : '';
     return `
       <li>
         <span style="flex:1">
@@ -725,10 +770,11 @@ function renderItem(cat, it) {
           ${subText ? `<span style="font-size:0.8rem;color:var(--text2);display:block">${escHtml(subText)}</span>` : ''}
         </span>
         <span class="cat-badge cat-${c === '收入' ? 'income' : c}">${c}</span>
-        <span style="font-weight:600;color:${isIncome ? 'var(--success)' : 'var(--danger)'}">${isIncome ? '+' : '-'}$${it.amount||0}</span>
+        <span style="font-weight:600;color:${isIncome ? 'var(--success)' : 'var(--danger)'}">${isIncome ? '+' : '-'}NT$${it.amount||0}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>
+        ${itemsHtml}
       </li>`;
   }
   if (cat.id === 'todo') {

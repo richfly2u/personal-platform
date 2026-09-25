@@ -114,7 +114,7 @@ def main():
     
     # Open app
     subprocess.run(['adb', 'shell', 'am', 'start', '-n',
-        f'{PACKAGE}/com.firemaptech.invoicecarrier.ui.main.MainActivity'], capture_output=True, timeout=10)
+        f'{PACKAGE}/.activity.SplashActivity', '--activity-clear-task'], capture_output=True, timeout=10)
     time.sleep(2)
     
     # 我的發票 tab

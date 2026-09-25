@@ -144,6 +144,7 @@ li, .card {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   font-size: 0.95rem;
   line-height: 1.4;
 }
@@ -199,6 +200,34 @@ li, .card {
 #expenseSummary .label {
   font-size: 0.8rem;
   color: var(--text2);
+}
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.month-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.month-nav-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.month-back {
+  font-size: 0.78rem;
+  color: var(--accent, #2f855a);
+  cursor: pointer;
+  margin-bottom: 4px;
 }
 .summary-row {
   display: flex;
@@ -305,6 +334,32 @@ li, .card {
 .cat-道場 { background: #fef9c3; color: #a16207; }
 .cat-其他 { background: #e5e7eb; color: #4b5563; }
 .cat-income { background: #d1fae5; color: #047857; }
+
+/* 發票消費明細摺疊 */
+.inv-items {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--text2);
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.inv-items summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 600;
+  user-select: none;
+}
+.inv-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+}
+.inv-item .inv-name { flex: 1; }
+.inv-item .inv-qty { color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
+.inv-item .inv-amt { font-weight: 600; flex-shrink: 0; }
 
 /* === 行事曆 === */
 .cal-nav {

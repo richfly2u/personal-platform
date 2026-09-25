@@ -1,5 +1,887 @@
 [
   {
+    "id": "FP10359710",
+    "amount": 648,
+    "store": "崇德發",
+    "item": "崇德發能量拿鐵-箱24入",
+    "date": "09/25",
+    "items": [
+      {
+        "name": "崇德發能量拿鐵-箱24入",
+        "qty": 1.0,
+        "unit_price": 648.0,
+        "amount": 648.0
+      }
+    ]
+  },
+  {
+    "id": "ER25819272",
+    "amount": 10,
+    "store": "萊爾富",
+    "item": "統一草莓多多4℃",
+    "date": "09/23",
+    "items": [
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -2.0,
+        "amount": -2.0
+      }
+    ]
+  },
+  {
+    "id": "ER27256876",
+    "amount": 30,
+    "store": "萊爾富",
+    "item": "桂格顆粒豆漿燕麥",
+    "date": "09/23",
+    "items": [
+      {
+        "name": "桂格顆粒豆漿燕麥",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "ER24143494",
+    "amount": 77,
+    "store": "萊爾富",
+    "item": "土豆王芥末花生",
+    "date": "09/22",
+    "items": [
+      {
+        "name": "土豆王芥末花生",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "冷泡烏龍無糖(大",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -13.0,
+        "amount": -13.0
+      }
+    ]
+  },
+  {
+    "id": "ER24143481",
+    "amount": 32,
+    "store": "萊爾富",
+    "item": "統一LP33益敏優多",
+    "date": "09/22",
+    "items": [
+      {
+        "name": "統一LP33益敏優多",
+        "qty": 1.0,
+        "unit_price": 15.0,
+        "amount": 15.0
+      },
+      {
+        "name": "茶葉蛋(入倉)",
+        "qty": 1.0,
+        "unit_price": 13.0,
+        "amount": 13.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -8.0,
+        "amount": -8.0
+      }
+    ]
+  },
+  {
+    "id": "ER26136356",
+    "amount": 30,
+    "store": "萊爾富",
+    "item": "桂格顆粒豆漿燕麥",
+    "date": "09/22",
+    "items": [
+      {
+        "name": "桂格顆粒豆漿燕麥",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "ER22822797",
+    "amount": 23,
+    "store": "萊爾富",
+    "item": "統一LP33益敏優多",
+    "date": "09/21",
+    "items": [
+      {
+        "name": "統一LP33益敏優多",
+        "qty": 1.0,
+        "unit_price": 15.0,
+        "amount": 15.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -4.0,
+        "amount": -4.0
+      }
+    ]
+  },
+  {
+    "id": "ER24142678",
+    "amount": 30,
+    "store": "萊爾富",
+    "item": "原萃冷萃青茶",
+    "date": "09/21",
+    "items": [
+      {
+        "name": "原萃冷萃青茶",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "ER21262277",
+    "amount": 61,
+    "store": "萊爾富",
+    "item": "土豆王芥末花生",
+    "date": "09/18",
+    "items": [
+      {
+        "name": "土豆王芥末花生",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "統一LP33益敏優多",
+        "qty": 1.0,
+        "unit_price": 15.0,
+        "amount": 15.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -11.0,
+        "amount": -11.0
+      }
+    ]
+  },
+  {
+    "id": "ER24141151",
+    "amount": 39,
+    "store": "萊爾富",
+    "item": "樂法綠拿鐵",
+    "date": "09/18",
+    "items": [
+      {
+        "name": "樂法綠拿鐵",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -6.0,
+        "amount": -6.0
+      }
+    ]
+  },
+  {
+    "id": "EW00279251",
+    "amount": 170,
+    "store": "台灣中油",
+    "item": "【113F 12095001】９５無鉛汽油",
+    "date": "09/17",
+    "items": [
+      {
+        "name": "【113F 12095001】９５無鉛汽油",
+        "qty": 5.19,
+        "unit_price": 32.76,
+        "amount": 170.0
+      }
+    ]
+  },
+  {
+    "id": "ER21410261",
+    "amount": 10,
+    "store": "萊爾富",
+    "item": "統一草莓多多4℃",
+    "date": "09/16",
+    "items": [
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -2.0,
+        "amount": -2.0
+      }
+    ]
+  },
+  {
+    "id": "ER21409643",
+    "amount": 30,
+    "store": "萊爾富",
+    "item": "愛之味燕麥原味4C",
+    "date": "09/15",
+    "items": [
+      {
+        "name": "愛之味燕麥原味4C",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "ER21409362",
+    "amount": 120,
+    "store": "萊爾富",
+    "item": "光泉全脂鮮乳(大",
+    "date": "09/15",
+    "items": [
+      {
+        "name": "光泉全脂鮮乳(大",
+        "qty": 1.0,
+        "unit_price": 100.0,
+        "amount": 100.0
+      },
+      {
+        "name": "統一原味多多170",
+        "qty": 2.0,
+        "unit_price": 12.0,
+        "amount": 24.0
+      },
+      {
+        "name": "29496563",
+        "qty": 1.0,
+        "unit_price": 0.0,
+        "amount": 0.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -4.0,
+        "amount": -4.0
+      }
+    ]
+  },
+  {
+    "id": "ER14892768",
+    "amount": 111,
+    "store": "萊爾富",
+    "item": "光泉全脂鮮乳(大",
+    "date": "09/14",
+    "items": [
+      {
+        "name": "光泉全脂鮮乳(大",
+        "qty": 1.0,
+        "unit_price": 100.0,
+        "amount": 100.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -1.0,
+        "amount": -1.0
+      }
+    ]
+  },
+  {
+    "id": "ER21408603",
+    "amount": 30,
+    "store": "萊爾富",
+    "item": "愛之味燕麥原味4C",
+    "date": "09/14",
+    "items": [
+      {
+        "name": "愛之味燕麥原味4C",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "EY62480525",
+    "amount": 87,
+    "store": "(A)*寶礦力水得PET580",
+    "item": "(A)*寶礦力水得PET580",
+    "date": "09/13",
+    "items": [
+      {
+        "name": "(A)*寶礦力水得PET580",
+        "qty": 3.0,
+        "unit_price": 29.0,
+        "amount": 87.0
+      }
+    ]
+  },
+  {
+    "id": "ER14891938",
+    "amount": 20,
+    "store": "萊爾富",
+    "item": "茶葉蛋(入倉)",
+    "date": "09/11",
+    "items": [
+      {
+        "name": "茶葉蛋(入倉)",
+        "qty": 1.0,
+        "unit_price": 13.0,
+        "amount": 13.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -5.0,
+        "amount": -5.0
+      }
+    ]
+  },
+  {
+    "id": "ER16785755",
+    "amount": 100,
+    "store": "萊爾富",
+    "item": "光泉全脂鮮乳(大",
+    "date": "09/11",
+    "items": [
+      {
+        "name": "光泉全脂鮮乳(大",
+        "qty": 1.0,
+        "unit_price": 100.0,
+        "amount": 100.0
+      }
+    ]
+  },
+  {
+    "id": "ER16983735",
+    "amount": 172,
+    "store": "萊爾富",
+    "item": "光泉全脂鮮乳(大",
+    "date": "09/10",
+    "items": [
+      {
+        "name": "光泉全脂鮮乳(大",
+        "qty": 2.0,
+        "unit_price": 100.0,
+        "amount": 200.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -28.0,
+        "amount": -28.0
+      }
+    ]
+  },
+  {
+    "id": "ER16983927",
+    "amount": 20,
+    "store": "萊爾富",
+    "item": "統一草莓多多4℃",
+    "date": "09/10",
+    "items": [
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 2.0,
+        "unit_price": 12.0,
+        "amount": 24.0
+      },
+      {
+        "name": "29496563",
+        "qty": 1.0,
+        "unit_price": 0.0,
+        "amount": 0.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -4.0,
+        "amount": -4.0
+      }
+    ]
+  },
+  {
+    "id": "EL92949971",
+    "amount": 60,
+    "store": "全家",
+    "item": "ＦＭＣ芭樂檸檬青茶",
+    "date": "09/10",
+    "items": [
+      {
+        "name": "ＦＭＣ芭樂檸檬青茶",
+        "qty": 1.0,
+        "unit_price": 60.0,
+        "amount": 60.0
+      }
+    ]
+  },
+  {
+    "id": "ER14307155",
+    "amount": 13,
+    "store": "萊爾富",
+    "item": "統一LP33益敏優多",
+    "date": "09/09",
+    "items": [
+      {
+        "name": "統一LP33益敏優多",
+        "qty": 1.0,
+        "unit_price": 15.0,
+        "amount": 15.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -2.0,
+        "amount": -2.0
+      }
+    ]
+  },
+  {
+    "id": "EU44085674",
+    "amount": 506,
+    "store": "全聯",
+    "item": "柏賓士印花張",
+    "date": "09/09",
+    "items": [
+      {
+        "name": "柏賓士印花張",
+        "qty": 2.0,
+        "unit_price": 0.0,
+        "amount": 0.0
+      },
+      {
+        "name": "老楊方塊酥麥纖",
+        "qty": 1.0,
+        "unit_price": 99.0,
+        "amount": 99.0
+      },
+      {
+        "name": "可樂果香菜貢丸",
+        "qty": 1.0,
+        "unit_price": 26.0,
+        "amount": 26.0
+      },
+      {
+        "name": "味丹隨緣素肉骨",
+        "qty": 1.0,
+        "unit_price": 79.0,
+        "amount": 79.0
+      },
+      {
+        "name": "可樂果山葵口味",
+        "qty": 2.0,
+        "unit_price": 26.0,
+        "amount": 52.0
+      },
+      {
+        "name": "可樂果海苔鹽味",
+        "qty": 1.0,
+        "unit_price": 52.0,
+        "amount": 52.0
+      },
+      {
+        "name": "翠?子",
+        "qty": 1.0,
+        "unit_price": 69.0,
+        "amount": 69.0
+      },
+      {
+        "name": "貝納頌3合1拿鐵",
+        "qty": 1.0,
+        "unit_price": 129.0,
+        "amount": 129.0
+      }
+    ]
+  },
+  {
+    "id": "FR93295425",
+    "amount": 1124.91,
+    "store": "阿一蔬果",
+    "item": "砂糖橘",
+    "date": "09/09",
+    "items": [
+      {
+        "name": "砂糖橘",
+        "qty": 2.0,
+        "unit_price": 149.0,
+        "amount": 298.0
+      },
+      {
+        "name": "紐西蘭富士＃７０",
+        "qty": 4.0,
+        "unit_price": 83.74,
+        "amount": 334.97
+      },
+      {
+        "name": "卓蘭巨峰",
+        "qty": 0.9,
+        "unit_price": 107.78,
+        "amount": 97.0
+      },
+      {
+        "name": "酪梨（變色）",
+        "qty": 1.73,
+        "unit_price": 58.96,
+        "amount": 102.0
+      },
+      {
+        "name": "香蕉",
+        "qty": 2.7,
+        "unit_price": 27.04,
+        "amount": 73.0
+      },
+      {
+        "name": "５２金奇（小）",
+        "qty": 2.0,
+        "unit_price": 109.97,
+        "amount": 219.94
+      }
+    ]
+  },
+  {
+    "id": "FN70520073",
+    "amount": 30,
+    "store": "國立臺灣大學",
+    "item": "三明治冰淇淋",
+    "date": "09/08",
+    "items": [
+      {
+        "name": "三明治冰淇淋",
+        "qty": 1.0,
+        "unit_price": 30.0,
+        "amount": 30.0
+      }
+    ]
+  },
+  {
+    "id": "EW00273607",
+    "amount": 159,
+    "store": "台灣中油",
+    "item": "【113F 12095001】９５無鉛汽油",
+    "date": "09/08",
+    "items": [
+      {
+        "name": "【113F 12095001】９５無鉛汽油",
+        "qty": 4.97,
+        "unit_price": 31.99,
+        "amount": 159.0
+      }
+    ]
+  },
+  {
+    "id": "ER09787440",
+    "amount": 22,
+    "store": "萊爾富",
+    "item": "統一草莓多多4℃",
+    "date": "09/07",
+    "items": [
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 2.0,
+        "unit_price": 12.0,
+        "amount": 24.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -2.0,
+        "amount": -2.0
+      }
+    ]
+  },
+  {
+    "id": "ER09787627",
+    "amount": 38,
+    "store": "萊爾富",
+    "item": "土豆王芥末花生",
+    "date": "09/07",
+    "items": [
+      {
+        "name": "土豆王芥末花生",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -7.0,
+        "amount": -7.0
+      }
+    ]
+  },
+  {
+    "id": "ER09783292",
+    "amount": 38,
+    "store": "萊爾富",
+    "item": "歐典洛神飲",
+    "date": "09/07",
+    "items": [
+      {
+        "name": "歐典洛神飲",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -7.0,
+        "amount": -7.0
+      }
+    ]
+  },
+  {
+    "id": "FP10358865",
+    "amount": 66,
+    "store": "崇德發",
+    "item": "崇德發CDF能量拿鐵咖啡-易開罐25",
+    "date": "09/07",
+    "items": [
+      {
+        "name": "崇德發CDF能量拿鐵咖啡-易開罐25",
+        "qty": 2.0,
+        "unit_price": 33.0,
+        "amount": 66.0
+      }
+    ]
+  },
+  {
+    "id": "EP49797283",
+    "amount": 490,
+    "store": "特力屋",
+    "item": "特力屋竹節片4組 黑-波浪架1\"管用",
+    "date": "09/05",
+    "items": [
+      {
+        "name": "特力屋竹節片4組 黑-波浪架1\"管用",
+        "qty": 10.0,
+        "unit_price": 49.0,
+        "amount": 490.0
+      }
+    ]
+  },
+  {
+    "id": "FT19409037",
+    "amount": 519,
+    "store": "家家買",
+    "item": "RCF248N/水漾尼龍雨衣-3XL(亮粉+亮黃)",
+    "date": "09/04",
+    "items": [
+      {
+        "name": "RCF248N/水漾尼龍雨衣-3XL(亮粉+亮黃)",
+        "qty": 1.0,
+        "unit_price": 519.0,
+        "amount": 519.0
+      }
+    ]
+  },
+  {
+    "id": "ER09784775",
+    "amount": 24,
+    "store": "萊爾富",
+    "item": "統一LP33益敏優多",
+    "date": "09/03",
+    "items": [
+      {
+        "name": "統一LP33益敏優多",
+        "qty": 1.0,
+        "unit_price": 15.0,
+        "amount": 15.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "29496563",
+        "qty": 1.0,
+        "unit_price": 0.0,
+        "amount": 0.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -3.0,
+        "amount": -3.0
+      }
+    ]
+  },
+  {
+    "id": "ER09782232",
+    "amount": 75,
+    "store": "萊爾富",
+    "item": "S.小農晶品鮮乳",
+    "date": "09/03",
+    "items": [
+      {
+        "name": "S.小農晶品鮮乳",
+        "qty": 1.0,
+        "unit_price": 100.0,
+        "amount": 100.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -25.0,
+        "amount": -25.0
+      }
+    ]
+  },
+  {
+    "id": "ER09781978",
+    "amount": 49,
+    "store": "萊爾富",
+    "item": "土豆王芥末花生",
+    "date": "09/02",
+    "items": [
+      {
+        "name": "土豆王芥末花生",
+        "qty": 1.0,
+        "unit_price": 45.0,
+        "amount": 45.0
+      },
+      {
+        "name": "統一草莓多多4℃",
+        "qty": 1.0,
+        "unit_price": 12.0,
+        "amount": 12.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -8.0,
+        "amount": -8.0
+      }
+    ]
+  },
+  {
+    "id": "ES68707576",
+    "amount": 65,
+    "store": "全國加油站",
+    "item": "(A)*桂格100%喝的燕麥290ml",
+    "date": "09/02",
+    "items": [
+      {
+        "name": "(A)*桂格100%喝的燕麥290ml",
+        "qty": 1.0,
+        "unit_price": 35.0,
+        "amount": 35.0
+      },
+      {
+        "name": "★新感覺花生夾心",
+        "qty": 1.0,
+        "unit_price": 30.0,
+        "amount": 30.0
+      }
+    ]
+  },
+  {
+    "id": "ER09786422",
+    "amount": 172,
+    "store": "萊爾富",
+    "item": "光泉全脂鮮乳(大",
+    "date": "09/01",
+    "items": [
+      {
+        "name": "光泉全脂鮮乳(大",
+        "qty": 2.0,
+        "unit_price": 100.0,
+        "amount": 200.0
+      },
+      {
+        "name": "促銷折扣",
+        "qty": 1.0,
+        "unit_price": -28.0,
+        "amount": -28.0
+      }
+    ]
+  },
+  {
     "id": "CJ95612125",
     "amount": 73,
     "store": "全家",

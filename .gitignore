@@ -6,3 +6,7 @@ __pycache__/
 data/*_dump.xml
 data/debug_*.xml
 data/cal-events-local.json
+chrome-profile/
+data/*.png
+data/*.xml
+data/invoice_items.csv
