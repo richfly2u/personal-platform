@@ -149,6 +149,9 @@ main {
 .home-card-expense {
   grid-column: span 2;
 }
+.home-card-wide {
+  grid-column: span 2;
+}
 .home-card-title {
   font-size: 0.9rem;
   font-weight: 700;
@@ -381,6 +384,80 @@ main {
   color: var(--text2);
   font-size: 0.85rem;
 }
+
+/* 便利貼（easynote 風格） */
+.sticky-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.sticky-note {
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.15s;
+  word-break: break-word;
+}
+.sticky-note:active { transform: scale(0.98); }
+.sticky-note.done .sticky-text {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.sticky-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #3d2c1e;
+  cursor: pointer;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.sticky-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.sticky-date {
+  flex: 1;
+  font-size: 0.68rem;
+  color: rgba(61,44,30,0.55);
+}
+.sticky-btn {
+  border: none;
+  background: rgba(255,255,255,0.55);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.sticky-editing textarea {
+  width: 100%;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  resize: vertical;
+  background: rgba(255,255,255,0.6);
+  color: #3d2c1e;
+  outline: none;
+}
+.sticky-editing .sticky-foot {
+  justify-content: flex-end;
+}
+#stickyEditSave, #stickyEditCancel {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+#stickyEditSave { background: var(--accent); color: #fff; }
+#stickyEditCancel { background: rgba(0,0,0,0.08); color: var(--text2); }
 
 /* 清單 */
 ul {

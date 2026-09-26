@@ -7,8 +7,12 @@ const BUILTIN_CATEGORIES = [
   {id: 'todo',    name: '待辦事項', icon: '✓'},
   {id: 'diary',   name: '日記',     icon: '📅'},
   {id: 'expense', name: '收支',     icon: '💰'},
-  {id: 'idea',    name: '靈感',     icon: '💡'}
+  {id: 'idea',    name: '靈感',     icon: '💡'},
+  {id: 'sticky',  name: '便利貼',   icon: '📝'}
 ];
+
+// 便利貼配色（easynote 風格：黃/粉/藍/綠/紫/橘）
+const STICKY_COLORS = ['#fef08a', '#fbcfe8', '#bfdbfe', '#bbf7d0', '#e9d5ff', '#fed7aa'];
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
@@ -57,6 +61,10 @@ function loadData() {
       if (saved.categories) appData.categories = saved.categories;
       if (saved.items) appData.items = saved.items;
     } catch(e) {}
+  }
+  // 確保便利貼類別存在（舊資料沒有）
+  if (!appData.categories.find(c => c.id === 'sticky')) {
+    appData.categories.push({id: 'sticky', name: '便利貼', icon: '📝'});
   }
 }
 
@@ -307,6 +315,11 @@ function setupVoice() {
     if (catId === 'expense') {
       const amt = parseAmount(text);
       addExpense(text, amt);
+    } else if (catId === 'sticky') {
+      getItems(catId).unshift({
+        id: uid(), text, date: today(), source: 'voice',
+        color: STICKY_COLORS[getItems('sticky').length % STICKY_COLORS.length]
+      });
     } else {
       getItems(catId).unshift({
         id: uid(), text, date: today(), source: 'voice', completed: false
@@ -602,7 +615,7 @@ function renderAll() {
   renderTodoWidget();
 }
 
-// 首頁：整合五項目重點摘要（收支/待辦/日記/靈感/養成好習慣）
+// 首頁：整合六項目重點摘要（收支/待辦/日記/靈感/便利貼/養成好習慣）
 function renderHome() {
   const main = document.getElementById('main');
   const now = new Date();
@@ -650,6 +663,10 @@ function renderHome() {
   const ideas = getItems('idea');
   const lastIdea = ideas.length ? [...ideas].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] : null;
 
+  // 便利貼（張數）
+  const stickies = getItems('sticky');
+  const stickyCount = stickies.length;
+
   main.innerHTML = `
     <section class="tab-content active">
       <h2>🏠 首頁</h2>
@@ -678,7 +695,11 @@ function renderHome() {
           <div class="home-card-title">💡 靈感</div>
           <div class="home-line">${lastIdea ? escHtml((lastIdea.text || '').slice(0, 14)) : '尚無靈感'}</div>
         </div>
-        <div class="home-card" onclick="goDashboard()">
+        <div class="home-card" onclick="goTab('sticky')">
+          <div class="home-card-title">📝 便利貼</div>
+          <div class="home-line">${stickyCount ? `${stickyCount} 張便籤` : '尚無便利貼'}</div>
+        </div>
+        <div class="home-card home-card-wide" onclick="goDashboard()">
           <div class="home-card-title">📊 養成好習慣</div>
           <div class="home-line">進入每日行動儀表板</div>
         </div>
@@ -717,7 +738,7 @@ function renderNav() {
     </button>
   `).join('') + `
     <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
-    <button class="nav-btn dash-btn ${dashboardOpen?'active':''}" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 養成好習慣</button>`;
+    <button class="nav-btn dash-btn ${dashboardOpen?'active':''}" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 好習慣</button>`;
 
   const homeBtn = document.getElementById('homeBtn');
   if (homeBtn) homeBtn.addEventListener('click', goHome);
@@ -766,6 +787,28 @@ function hideDashboard() {
   document.getElementById('voiceSection').style.display = '';
 }
 
+// 便利貼（easynote 風格彩色便籤）
+function renderStickyNote(it) {
+  if (editingId === it.id) {
+    return `<div class="sticky-note sticky-editing" style="background:${it.color || STICKY_COLORS[0]}">
+      <textarea id="stickyEditText" rows="3">${escHtml(it.text)}</textarea>
+      <div class="sticky-foot">
+        <button id="stickyEditSave">儲存</button>
+        <button id="stickyEditCancel">取消</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="sticky-note ${it.done ? 'done' : ''}" style="background:${it.color || STICKY_COLORS[0]}">
+    <div class="sticky-text" data-id="${it.id}">${escHtml(it.text)}</div>
+    <div class="sticky-foot">
+      <span class="sticky-date">${it.date || ''}</span>
+      <button class="sticky-btn sticky-edit" data-id="${it.id}" title="編輯">✏️</button>
+      <button class="sticky-btn sticky-color" data-id="${it.id}" title="換顏色">🎨</button>
+      <button class="sticky-btn sticky-del" data-id="${it.id}" title="刪除">🗑</button>
+    </div>
+  </div>`;
+}
+
 function renderMain() {
   const main = document.getElementById('main');
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
@@ -773,6 +816,7 @@ function renderMain() {
 
   let items = getItems(cat.id);
   const isExpense = cat.id === 'expense';
+  const isSticky = cat.id === 'sticky';
 
   // 收支摘要（本月份 + 收入支出表 + 分類 + 每日曲線圖）
   let summaryHtml = '';
@@ -850,7 +894,13 @@ function renderMain() {
   // 列表（收支頁：支出已在分類明細中，列表只顯示收入）
   const listItems = isExpense ? items.filter(it => (it.type || 'expense') === 'income') : items;
   let listHtml = '';
-  if (listItems.length === 0) {
+  if (isSticky) {
+    // 便利貼：彩色格子
+    const sorted = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    listHtml = sorted.length === 0
+      ? '<div class="card empty">尚無便利貼，用下方輸入框或語音新增</div>'
+      : `<div class="sticky-grid">${sorted.map(renderStickyNote).join('')}</div>`;
+  } else if (listItems.length === 0) {
     listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));
@@ -892,6 +942,8 @@ function renderMain() {
       if (isExpense) {
         const amt = parseAmount(text);
         addExpense(text, amt);
+      } else if (isSticky) {
+        getItems(cat.id).unshift({id: uid(), text, date: today(), source: 'manual', color: STICKY_COLORS[getItems('sticky').length % STICKY_COLORS.length]});
       } else {
         getItems(cat.id).unshift({id: uid(), text, date: today(), source: 'manual', completed: false});
       }
@@ -981,6 +1033,46 @@ function renderMain() {
         editingId = null;
         renderMain();
       });
+    }
+    // 便利貼事件（完成/換色/刪除/編輯）
+    if (isSticky) {
+      const grid = document.querySelector('.sticky-grid');
+      if (grid) {
+        grid.querySelectorAll('.sticky-text').forEach(el => {
+          el.addEventListener('click', () => {
+            const it = items.find(i => i.id === el.dataset.id);
+            if (it) { it.done = !it.done; saveData(); renderMain(); }
+          });
+        });
+        grid.querySelectorAll('.sticky-edit').forEach(el => {
+          el.addEventListener('click', () => { editingId = el.dataset.id; renderMain(); });
+        });
+        grid.querySelectorAll('.sticky-color').forEach(el => {
+          el.addEventListener('click', () => {
+            const it = items.find(i => i.id === el.dataset.id);
+            if (it) {
+              const idx = STICKY_COLORS.indexOf(it.color || STICKY_COLORS[0]);
+              it.color = STICKY_COLORS[(idx + 1) % STICKY_COLORS.length];
+              saveData(); renderMain();
+            }
+          });
+        });
+        grid.querySelectorAll('.sticky-del').forEach(el => {
+          el.addEventListener('click', () => {
+            const idx = items.findIndex(i => i.id === el.dataset.id);
+            if (idx >= 0) { items.splice(idx, 1); saveData(); renderMain(); }
+          });
+        });
+        const editSave = document.getElementById('stickyEditSave');
+        const editCancel = document.getElementById('stickyEditCancel');
+        if (editSave) editSave.addEventListener('click', () => {
+          const it = items.find(i => i.id === editingId);
+          const ta = document.getElementById('stickyEditText');
+          if (it && ta && ta.value.trim()) { it.text = ta.value.trim(); saveData(); }
+          editingId = null; renderMain();
+        });
+        if (editCancel) editCancel.addEventListener('click', () => { editingId = null; renderMain(); });
+      }
     }
   }
 }
