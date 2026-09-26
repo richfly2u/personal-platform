@@ -255,9 +255,10 @@ function setupVoice() {
   let polishedFor = '';   // 已加過標點的那段原文（避免重複呼叫 API）
   async function autoPunctuate() {
     const inp = addInput();
-    if (!inp) return;
+    if (!inp) return null;
     const raw = inp.value.trim();
-    if (!raw || raw.length < 3 || polishing || polishedFor === raw) return;
+    if (!raw || raw.length < 3 || polishing) return null;
+    if (polishedFor === raw) return raw;      // 這段已經加過標點 → 直接回傳，讓呼叫端可以存入
     polishing = true;
     const ph = inp.placeholder;
     inp.placeholder = '🤖 加標點中…';
@@ -265,24 +266,26 @@ function setupVoice() {
     try { out = await polishText(raw, 12000); } catch (e) { out = null; }
     polishing = false;
     const now = addInput();
-    if (!now) return;
+    if (!now) return null;
     now.placeholder = ph;
-    if (now.value.trim() !== raw) return;   // 期間被編輯過／已存入 → 不覆蓋
+    if (now.value.trim() !== raw) return null;   // 期間被編輯過／已存入 → 不覆蓋
     const text = (out && out.trim()) ? out.trim() : localPolish(raw);  // 連不上就退回本地補句號
     polishedFor = text;
     committed = text;
     now.value = text;
     autoGrowInput(now);
+    return text;
   }
 
   async function stopListening() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
-    // 關鍵：加標點期間先不要自動存 —— 若 DeepSeek 比較慢（>5 秒），原本會先把「還沒標點」的版本存進去，標點回來就來不及了
-    if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
-    await autoPunctuate();   // 先等標點進入輸入框（最多 12 秒；連不上會退回本地補句號）
-    startAutoSave();         // 標點就位後才開始 5 秒自動存入倒數
+    if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }   // 語音這條路完全不靠計時器
+    const done = await autoPunctuate();   // 先等標點進輸入框（最多 12 秒；連不上會退回本地補句號）
+    // 標點一好就直接存入（不再等 5 秒）；期間輸入框被改過／已存入就不動它
+    const inp = addInput();
+    if (done && inp && inp.value.trim() === String(done).trim()) submitAddText();
   }
 
   // 斷音計時：有收到語音就重置，超過 SILENCE_MS 沒聲音則自動停止
@@ -473,6 +476,19 @@ function addExpense(text, amount) {
 }
 
 // 新增目前頁面的內容（新增按鈕 + 語音自動存入共用）
+// 綁定新增區（新增鈕／Enter 送出／自動長高）—— 分類頁與首頁共用
+function bindAddForm() {
+  const addBtn = document.getElementById('addBtn');
+  const addText = document.getElementById('addText');
+  if (!addBtn || !addText) return;
+  addBtn.addEventListener('click', () => submitAddText());
+  addText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addBtn.click(); }
+  });
+  addText.addEventListener('input', () => autoGrowInput(addText));
+  autoGrowInput(addText);
+}
+
 function submitAddText() {
   clearAutoSave();
   const addText = document.getElementById('addText');
@@ -752,7 +768,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v49</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v51</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1014,17 +1030,8 @@ function renderMain() {
       ${chartHtml}
     </section>`;
 
-  // 綁定事件
-  const addBtn = document.getElementById('addBtn');
-  const addText = document.getElementById('addText');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => submitAddText());
-    addText.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addBtn.click(); }
-    });
-    addText.addEventListener('input', () => autoGrowInput(addText));
-    autoGrowInput(addText);
-  }
+  // 綁定事件（新增區：分類頁與首頁共用）
+  bindAddForm();
 
   // 列表事件
   const list = document.getElementById('itemList');
