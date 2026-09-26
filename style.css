@@ -785,6 +785,25 @@ nav {
   gap: 8px;
   align-items: flex-start;
 }
+
+/* 剛新增（重整前先顯示在輸入框下方，重整後才歸位） */
+.pending-box {
+  margin: 0 0 14px;
+  padding: 10px 12px 4px;
+  border: 1px solid var(--success);
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+.pending-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 8px;
+}
+.pending-list li {
+  box-shadow: none;
+  border: 1px solid #bbf7d0;
+}
 .add-form input,
 .add-form textarea {
   flex: 1;

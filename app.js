@@ -38,6 +38,8 @@ let voiceSupported = false;  // 瀏覽器是否支援語音辨識（決定是否
 const NAV_KEY = 'personal_platform_nav';  // 目前頁面狀態（重整後維持）
 let autoSaveTimer = null;  // 語音後 5 秒未觸碰 → 自動存入計時
 const AUTOSAVE_MS = 5000;
+// 本次剛新增的項目 id（只存在記憶體，重新整理後就歸位到原本位置）
+const pendingIds = new Set();
 
 function clearAutoSave() {
   if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
@@ -423,10 +425,12 @@ function addExpense(text, amount) {
   const store = detectStore(text);
   // 收入偵測：薪水/獎金/紅包/賣了/退款/中獎等
   const isIncome = /收入|賺了|賺到|領到|領錢|薪水|薪資|獎金|紅包|賣了|退款|退費|中獎|理賠/.test(text);
-  getItems('expense').unshift({
+  const it = {
     id: uid(), store, item: extractItem(text, store), text, amount, date: today(),
     source: 'voice', type: isIncome ? 'income' : 'expense'
-  });
+  };
+  getItems('expense').unshift(it);
+  return it.id;
 }
 
 // 新增目前頁面的內容（新增按鈕 + 語音自動存入共用）
@@ -439,12 +443,15 @@ function submitAddText() {
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
   if (!cat) return;
   const isExpense = cat.id === 'expense';
+  let newId;
   if (isExpense) {
-    const amt = parseAmount(text);
-    addExpense(text, amt);
+    newId = addExpense(text, parseAmount(text));
   } else {
-    getItems(cat.id).unshift({id: uid(), text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
+    newId = uid();
+    getItems(cat.id).unshift({id: newId, text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
   }
+  // 先顯示在輸入框下方的「剛新增」區，重新整理後才歸位
+  if (newId) pendingIds.add(newId);
   saveData();
   renderMain();
 }
@@ -652,7 +659,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v40</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v41</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -816,7 +823,7 @@ function renderMain() {
                                      .sort((a, b) => (catSum[b] || 0) - (catSum[a] || 0));
     const catHtml = catOrder.map(c => {
       const v = catSum[c] || 0;
-      const catItems = expItems.filter(it => (it.cat || expenseCat(it.store, it.text)) === c);
+      const catItems = expItems.filter(it => (it.cat || expenseCat(it.store, it.text)) === c && !pendingIds.has(it.id));
       let detailHtml = '';
       if (c === '住' && MONTHLY_HOUSING > 0) {
         detailHtml += `<li class="cat-fixed"><span style="flex:1">固定（房租）</span><span style="font-weight:600;color:var(--danger)">-NT$${MONTHLY_HOUSING.toLocaleString()}</span></li>`;
@@ -858,7 +865,16 @@ function renderMain() {
   }
 
   // 列表（收支頁：支出已在分類明細中，列表只顯示收入）
-  const listItems = isExpense ? items.filter(it => (it.type || 'expense') === 'income') : items;
+  // 本次剛新增的先排除（改顯示在輸入框下方的「剛新增」區），重新整理後才歸位
+  const listItems = (isExpense ? items.filter(it => (it.type || 'expense') === 'income') : items)
+    .filter(it => !pendingIds.has(it.id));
+  const pendingItems = getItems(cat.id).filter(it => pendingIds.has(it.id));
+  const pendingHtml = pendingItems.length
+    ? `<div class="pending-box">
+         <div class="pending-title">✅ 剛新增 ${pendingItems.length} 筆（重新整理後歸位）</div>
+         <ul class="pending-list">${pendingItems.map(it => renderItem(cat, it)).join('')}</ul>
+       </div>`
+    : '';
   let listHtml = '';
   if (listItems.length === 0) {
     listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
@@ -894,6 +910,7 @@ function renderMain() {
     <section class="tab-content active">
       <h2>${cat.icon} ${cat.name}</h2>
       ${addForm}
+      ${pendingHtml}
       ${summaryHtml}
       <div id="itemList">${listHtml}</div>
       ${chartHtml}
@@ -957,6 +974,7 @@ function renderMain() {
         const idx = items.findIndex(i => i.id === id);
         if (idx >= 0) {
           items.splice(idx, 1);
+          pendingIds.delete(id);
           saveData();
           renderMain();
         }
