@@ -402,13 +402,12 @@ function resetExpenseMonth() {
   renderMain();
 }
 
-// 明細列表 toggle（在支出分類總額下，顯示/隱藏整個明細列表）
-function toggleAllDetail(btn) {
-  const list = document.getElementById('itemList');
+// 分類明細 toggle（每個分類下方，顯示/隱藏該分類明細）
+function toggleCatDetail(btn) {
+  const list = btn.nextElementSibling;
   if (!list) return;
-  const hidden = list.classList.toggle('detail-hidden');
-  btn.classList.toggle('open', !hidden);
-  btn.textContent = hidden ? '顯示明細' : '隱藏明細';
+  const shown = list.classList.toggle('show');
+  btn.classList.toggle('open', shown);
 }
 
 // 每日花費曲線圖（SVG 直條圖）
@@ -519,15 +518,23 @@ function renderMain() {
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
     }
     const catMax = Math.max(...Object.values(catSum), 1);
-    // 六個分類永遠顯示（沒花費顯示 $0）
+    // 六個分類永遠顯示（沒花費顯示 $0）；每個分類下方有 toggle 顯示該分類明細
     const catHtml = EXPENSE_CATS.map(c => {
       const v = catSum[c] || 0;
+      const catItems = expItems.filter(it => (it.cat || expenseCat(it.store, it.text)) === c);
+      let detailHtml = '';
+      if (c === '住' && MONTHLY_HOUSING > 0) {
+        detailHtml += `<li class="cat-fixed"><span style="flex:1">固定（房租）</span><span style="font-weight:600;color:var(--danger)">-NT$${MONTHLY_HOUSING.toLocaleString()}</span></li>`;
+      }
+      detailHtml += catItems.map(it => renderItem(cat, it)).join('');
       return `
         <div class="cat-row">
           <span class="cat-name">${c}</span>
           <span class="cat-bar"><span class="cat-fill" style="width:${Math.round(v/catMax*100)}%"></span></span>
           <span class="cat-amt">NT$${v.toLocaleString()}</span>
-        </div>`;
+        </div>
+        <button type="button" class="cat-toggle" onclick="toggleCatDetail(this)">明細</button>
+        <ul class="cat-detail">${detailHtml || '<li class="cat-empty">本月無支出</li>'}</ul>`;
     }).join('');
 
     summaryHtml = `
@@ -545,8 +552,7 @@ function renderMain() {
         </div>
         <div class="label">${monthItems.length} 筆</div>
       </div>
-      ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}
-      <button type="button" class="detail-toggle" onclick="toggleAllDetail(this)">顯示明細</button>`;
+      ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}`;
     chartHtml = `
       <div class="chart-box">
         <div class="chart-title">📈 每日花費（${vMonth}月 1-${maxDay}日）</div>
@@ -556,12 +562,13 @@ function renderMain() {
     items = monthItems;
   }
 
-  // 列表
+  // 列表（收支頁：支出已在分類明細中，列表只顯示收入）
+  const listItems = isExpense ? items.filter(it => (it.type || 'expense') === 'income') : items;
   let listHtml = '';
-  if (items.length === 0) {
-    listHtml = `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
+  if (listItems.length === 0) {
+    listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
   } else {
-    const sorted = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));
     listHtml = sorted.map(it => {
       if (editingId === it.id) {
         return renderEditForm(cat, it);
@@ -585,7 +592,7 @@ function renderMain() {
     <section class="tab-content active">
       <h2>${cat.icon} ${cat.name}</h2>
       ${summaryHtml}
-      <div id="itemList" class="${isExpense ? 'detail-hidden' : ''}">${listHtml}</div>
+      <div id="itemList">${listHtml}</div>
       ${chartHtml}
       ${addForm}
     </section>`;
@@ -643,15 +650,15 @@ function renderMain() {
         }
       });
     });
-    // 編輯
-    list.querySelectorAll('.edit-btn').forEach(el => {
+    // 編輯（itemList 收入 + 分類明細支出）
+    main.querySelectorAll('.edit-btn').forEach(el => {
       el.addEventListener('click', () => {
         editingId = el.dataset.id;
         renderMain();
       });
     });
-    // 刪除
-    list.querySelectorAll('.del-btn').forEach(el => {
+    // 刪除（itemList 收入 + 分類明細支出）
+    main.querySelectorAll('.del-btn').forEach(el => {
       el.addEventListener('click', () => {
         const id = el.dataset.id;
         const idx = items.findIndex(i => i.id === id);

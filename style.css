@@ -248,9 +248,9 @@ li, .card {
   font-size: 0.72rem;
   opacity: .75;
 }
-.sum-income { font-size: 1.15rem; font-weight: 700; color: #047857; }
-.sum-expense { font-size: 1.15rem; font-weight: 700; color: #c2410c; }
-.sum-balance { font-size: 1.15rem; font-weight: 700; }
+.sum-income { font-size: 1rem; font-weight: 700; color: #047857; white-space: nowrap; }
+.sum-expense { font-size: 1rem; font-weight: 700; color: #c2410c; white-space: nowrap; }
+.sum-balance { font-size: 1rem; font-weight: 700; white-space: nowrap; }
 .sum-balance.pos { color: #047857; }
 .sum-balance.neg { color: #dc2626; }
 .cat-stats-title {
@@ -350,30 +350,52 @@ li, .card {
 .inv-item .inv-qty { color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
 .inv-item .inv-amt { font-weight: 600; flex-shrink: 0; }
 
-/* 支出分類總額下的明細列表 toggle（顯示/隱藏整個列表） */
-.detail-toggle {
+/* 分類明細 toggle（每個分類下方） */
+.cat-toggle {
   display: block;
   width: 100%;
   background: none;
   border: none;
-  border-top: 1px dashed var(--border);
-  padding: 8px 0 4px;
-  margin-top: 6px;
+  padding: 1px 0 3px;
   text-align: left;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--accent);
   font-weight: 600;
   cursor: pointer;
   user-select: none;
 }
-.detail-toggle::before {
+.cat-toggle::before {
   content: '▸ ';
 }
-.detail-toggle.open::before {
+.cat-toggle.open::before {
   content: '▾ ';
 }
-#itemList.detail-hidden {
+.cat-detail {
   display: none;
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+}
+.cat-detail.show {
+  display: block;
+}
+.cat-detail li {
+  margin-bottom: 6px;
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+.cat-detail .cat-empty,
+.cat-detail .cat-fixed {
+  background: none;
+  box-shadow: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--text2);
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
 }
 
 /* === 行事曆 === */
