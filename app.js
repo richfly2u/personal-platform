@@ -694,9 +694,9 @@ function habitAuth() {
   if (habitAuth._a) return habitAuth._a;
   try {
     let fapp;
-    try { fapp = firebase.app('pp-habit'); }
+    try { fapp = firebase.app(); }              // 用預設 app 名稱 → 與養成好習慣儀表板共用同一組登入（同網域）
     catch (e) {
-      fapp = firebase.initializeApp({ apiKey: FIRESTORE_KEY, authDomain: 'bentodish-alan.firebaseapp.com', projectId: 'bentodish-alan' }, 'pp-habit');
+      fapp = firebase.initializeApp({ apiKey: FIRESTORE_KEY, authDomain: 'bentodish-alan.firebaseapp.com', projectId: 'bentodish-alan' });
     }
     habitAuth._a = firebase.auth(fapp);
   } catch (e) { return null; }
@@ -831,7 +831,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v52</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v53</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
