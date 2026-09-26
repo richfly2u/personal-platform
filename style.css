@@ -28,16 +28,16 @@ body {
 }
 
 /* 語音區 */
-/* 麥克風按鈕（輸入框旁） */
+/* 麥克風按鈕（獨立一顆在輸入框上方，整條好按） */
 #micBtn {
-  width: 44px;
+  width: 100%;
   flex-shrink: 0;
   border: 1px solid var(--border);
   background: white;
   color: var(--text);
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  padding: 10px 0;
+  padding: 12px 0;
 }
 #micBtn.listening {
   background: var(--danger);
@@ -773,11 +773,16 @@ nav {
   line-height: 1.5;
 }
 
-/* 新增輸入框 */
+/* 新增輸入框（麥克風在上、輸入框＋新增在下） */
 .add-form {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin: 12px 0 24px;
+}
+.add-row {
+  display: flex;
+  gap: 8px;
   align-items: flex-start;
 }
 .add-form input,
