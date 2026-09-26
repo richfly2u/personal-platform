@@ -156,13 +156,8 @@ function setupVoice() {
   const btn = document.getElementById('voiceBtn');
   const resultDiv = document.getElementById('voiceResult');
   const voiceText = document.getElementById('voiceText');
-  const categorySelect = document.getElementById('categorySelect');
   const saveBtn = document.getElementById('saveVoice');
   const cancelBtn = document.getElementById('cancelVoice');
-
-  // 填入分類選單
-  categorySelect.innerHTML = appData.categories.map(c =>
-    `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -179,10 +174,6 @@ function setupVoice() {
     btn.textContent = '🎤';
     if (finalText.trim()) {
       voiceText.textContent = finalText.trim();
-      const auto = classifyText(finalText.trim());
-      if (categorySelect.querySelector(`option[value="${auto}"]`)) {
-        categorySelect.value = auto;
-      }
     }
   }
 
@@ -299,7 +290,7 @@ function setupVoice() {
 
   saveBtn.addEventListener('click', async () => {
     let text = voiceText.textContent.trim();
-    const catId = categorySelect.value;
+    const catId = currentTab;
     if (!text) return;
 
     // 日記：先潤稿（加標點 + 潤飾）
@@ -540,6 +531,9 @@ function renderPieChart(catSum) {
 // === 渲染 ===
 function renderAll() {
   renderNav();
+  // 語音按鈕只在內容頁顯示（首頁/養成好習慣不適用）
+  const voiceBtn = document.getElementById('voiceBtn');
+  if (voiceBtn) voiceBtn.style.display = (homeOpen || dashboardOpen) ? 'none' : '';
   if (homeOpen) {
     renderHome();
   } else if (!dashboardOpen) {
@@ -649,7 +643,6 @@ function goHome() {
 
 // 首頁點「養成好習慣」→ 開儀表板
 function goDashboard() {
-  homeOpen = false;
   showDashboard();
 }
 
@@ -684,7 +677,7 @@ function renderNav() {
     dashBtn.addEventListener('click', () => {
       if (dashboardOpen) {
         hideDashboard();
-        renderNav();
+        renderAll();
       } else {
         showDashboard();
       }
@@ -695,7 +688,6 @@ function renderNav() {
 // 養成好習慣 iframe 內嵌（保留底部導航）
 function showDashboard() {
   dashboardOpen = true;
-  homeOpen = false;
   const frame = document.getElementById('dashFrame');
   const iframe = document.getElementById('dashIframe');
   if (frame) frame.classList.remove('hidden');
