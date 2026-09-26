@@ -99,6 +99,14 @@ function today() {
   return `${d.getMonth()+1}/${d.getDate()}`;
 }
 
+// 日期＋時間（日記用：自動紀錄「此時此刻」）
+function nowStamp() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+}
+
 // === 同步資料 ===
 async function loadSyncData() {
   try {
@@ -174,15 +182,28 @@ function setupVoice() {
   let recognition = null;
   let finalText = '';
   let stoppedByUser = false;
+  let silenceTimer = null;
+  const SILENCE_MS = 3000;  // 斷音超過 3 秒自動停止
 
   function micBtn() { return document.getElementById('micBtn'); }
 
   function stopListening() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
+    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
     if (finalText.trim()) {
       voiceText.textContent = finalText.trim();
     }
+  }
+
+  // 斷音計時：有收到語音就重置，超過 SILENCE_MS 沒聲音則自動停止
+  function resetSilenceTimer() {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      stoppedByUser = true;
+      try { recognition.stop(); } catch(e) {}
+      stopListening();
+    }, SILENCE_MS);
   }
 
   // 先確認麥克風權限（Chrome 首次點擊會跳權限提示，未授權前 onstart 不會觸發，
@@ -226,10 +247,10 @@ function setupVoice() {
     recognition = new SpeechRecognition();
     recognition.lang = 'zh-TW';
     recognition.interimResults = true;
-    recognition.continuous = false;   // 關鍵：每段話乾淨單一結果，不重複
+    recognition.continuous = true;   // 連續辨識：整段話都能辨識，不因短暫停頓就中斷
 
     voiceText.style.color = '';
-    voiceText.textContent = '請說話…';
+    voiceText.textContent = finalText ? finalText : '請說話…';
 
     // 偵測辨識是否真的啟動（無後端的瀏覽器會靜默卡住不觸發任何事件）
     let started = false;
@@ -244,7 +265,7 @@ function setupVoice() {
       }
     }, 8000);
 
-    recognition.onstart = () => { started = true; clearTimeout(stallTimer); };
+    recognition.onstart = () => { started = true; clearTimeout(stallTimer); resetSilenceTimer(); };
 
     recognition.onresult = (event) => {
       let interim = '';
@@ -259,6 +280,7 @@ function setupVoice() {
       voiceText.style.color = '';
       voiceText.textContent = finalText + interim;
       resultDiv.classList.remove('hidden');
+      resetSilenceTimer();  // 有說話 → 重置斷音計時
     };
 
     recognition.onerror = (e) => {
@@ -275,7 +297,7 @@ function setupVoice() {
 
     recognition.onend = () => {
       if (!stoppedByUser) {
-        // 沒按停止 → 自動續聽（無縫接下一段話）
+        // 後端意外結束（如超時）→ 自動續聽
         setTimeout(startListening, 400);
       } else {
         stopListening();
@@ -319,7 +341,9 @@ function setupVoice() {
       addExpense(text, amt);
     } else {
       getItems(catId).unshift({
-        id: uid(), text, date: today(), source: 'voice', completed: false
+        id: uid(), text,
+        date: catId === 'diary' ? nowStamp() : today(),
+        source: 'voice', completed: false
       });
     }
     saveData();
@@ -846,7 +870,7 @@ function renderMain() {
         const amt = parseAmount(text);
         addExpense(text, amt);
       } else {
-        getItems(cat.id).unshift({id: uid(), text, date: today(), source: 'manual', completed: false});
+        getItems(cat.id).unshift({id: uid(), text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
       }
       saveData();
       renderMain();
