@@ -36,6 +36,19 @@ let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
 const DASH_URL = 'https://richfly2u.github.io/daily-dashboard/';
 let voiceSupported = false;  // 瀏覽器是否支援語音辨識（決定是否顯示麥克風按鈕）
 const NAV_KEY = 'personal_platform_nav';  // 目前頁面狀態（重整後維持）
+let autoSaveTimer = null;  // 語音後 5 秒未觸碰 → 自動存入計時
+const AUTOSAVE_MS = 5000;
+
+function clearAutoSave() {
+  if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+}
+// 語音停止且有文字時，啟動 5 秒自動存入（前賢觸碰螢幕/輸入會重設）
+function startAutoSave() {
+  clearAutoSave();
+  const addText = document.getElementById('addText');
+  if (!addText || !addText.value.trim()) return;
+  autoSaveTimer = setTimeout(() => { autoSaveTimer = null; submitAddText(); }, AUTOSAVE_MS);
+}
 
 // === 初始化 ===
 async function init() {
@@ -222,6 +235,7 @@ function setupVoice() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+    startAutoSave();  // 語音停止後，5 秒未觸碰 → 自動存入
   }
 
   // 斷音計時：有收到語音就重置，超過 SILENCE_MS 沒聲音則自動停止
@@ -339,6 +353,13 @@ function setupVoice() {
     finalText = addInput() ? addInput().value : '';
     startListening();
   });
+
+  // 螢幕觸碰／輸入 → 重設自動存入計時（前賢在確認/編輯時不自動存）
+  ['touchstart', 'click', 'input'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      if (autoSaveTimer) startAutoSave();
+    });
+  });
 }
 
 // 日記語音潤稿：DeepSeek 加標點 + 潤飾（需在家連本機伺服器）
@@ -390,6 +411,26 @@ function addExpense(text, amount) {
     id: uid(), store, item: extractItem(text, store), text, amount, date: today(),
     source: 'voice', type: isIncome ? 'income' : 'expense'
   });
+}
+
+// 新增目前頁面的內容（新增按鈕 + 語音自動存入共用）
+function submitAddText() {
+  clearAutoSave();
+  const addText = document.getElementById('addText');
+  if (!addText) return;
+  const text = addText.value.trim();
+  if (!text) return;
+  const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
+  if (!cat) return;
+  const isExpense = cat.id === 'expense';
+  if (isExpense) {
+    const amt = parseAmount(text);
+    addExpense(text, amt);
+  } else {
+    getItems(cat.id).unshift({id: uid(), text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
+  }
+  saveData();
+  renderMain();
 }
 
 // 從語音/輸入文字判斷商店
@@ -834,19 +875,8 @@ function renderMain() {
   const addBtn = document.getElementById('addBtn');
   const addText = document.getElementById('addText');
   if (addBtn) {
-    addBtn.addEventListener('click', () => {
-      const text = addText.value.trim();
-      if (!text) return;
-      if (isExpense) {
-        const amt = parseAmount(text);
-        addExpense(text, amt);
-      } else {
-        getItems(cat.id).unshift({id: uid(), text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
-      }
-      saveData();
-      renderMain();
-    });
-    addText.addEventListener('keydown', e => {
+    addBtn.addEventListener('click', () => submitAddText());
+    addText.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') addBtn.click();
     });
   }
