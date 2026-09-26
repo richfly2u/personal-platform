@@ -34,14 +34,15 @@ let expenseView = { year: null, month: null };  // 收支檢視月份（null=本
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
 const DASH_URL = 'https://richfly2u.github.io/daily-dashboard/';
+let voiceSupported = false;  // 瀏覽器是否支援語音辨識（決定是否顯示麥克風按鈕）
 
 // === 初始化 ===
 async function init() {
   loadData();
   migrateOldData();
   await loadSyncData();
-  renderAll();
   setupVoice();
+  renderAll();
   setupTodoWidget();
 }
 
@@ -154,7 +155,6 @@ async function loadSyncData() {
 
 // === 語音輸入 ===
 function setupVoice() {
-  const btn = document.getElementById('voiceBtn');
   const resultDiv = document.getElementById('voiceResult');
   const voiceText = document.getElementById('voiceText');
   const saveBtn = document.getElementById('saveVoice');
@@ -162,17 +162,20 @@ function setupVoice() {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    btn.style.display = 'none';
+    voiceSupported = false;
     return;
   }
+  voiceSupported = true;
 
   let recognition = null;
   let finalText = '';
   let stoppedByUser = false;
 
+  function micBtn() { return document.getElementById('micBtn'); }
+
   function stopListening() {
-    btn.classList.remove('listening');
-    btn.textContent = '🎤';
+    const b = micBtn();
+    if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (finalText.trim()) {
       voiceText.textContent = finalText.trim();
     }
@@ -199,8 +202,8 @@ function setupVoice() {
 
   function startListening() {
     stoppedByUser = false;
-    btn.classList.add('listening');
-    btn.textContent = '🔴';
+    const b = micBtn();
+    if (b) { b.classList.add('listening'); b.textContent = '🔴'; }
     voiceText.style.color = '';
     resultDiv.classList.remove('hidden');
 
@@ -278,13 +281,16 @@ function setupVoice() {
     recognition.start();
   }
 
-  btn.addEventListener('click', () => {
-    if (recognition && btn.classList.contains('listening')) {
+  // 委派：麥克風按鈕在輸入框旁（動態產生於 #main 內）
+  document.getElementById('main').addEventListener('click', (e) => {
+    const b = e.target.closest('#micBtn');
+    if (!b) return;
+    if (recognition && b.classList.contains('listening')) {
       stoppedByUser = true;
       recognition.stop();
       return;
     }
-    if (btn.classList.contains('listening')) return;
+    if (b.classList.contains('listening')) return;
     finalText = '';
     startListening();
   });
@@ -588,9 +594,9 @@ function renderPieChart(catSum) {
 // === 渲染 ===
 function renderAll() {
   renderNav();
-  // 語音按鈕只在內容頁顯示（首頁/養成好習慣不適用）
-  const voiceBtn = document.getElementById('voiceBtn');
-  if (voiceBtn) voiceBtn.style.display = (homeOpen || dashboardOpen) ? 'none' : '';
+  // 語音結果浮動列：首頁/養成好習慣時隱藏（內容頁不強制，交由語音流程控制）
+  const voiceResult = document.getElementById('voiceResult');
+  if (voiceResult && (homeOpen || dashboardOpen)) voiceResult.classList.add('hidden');
   // 待辦小工具只在非儀表板顯示（首頁+內容頁皆可）
   const todoWidget = document.getElementById('todoWidget');
   if (todoWidget) todoWidget.style.display = dashboardOpen ? 'none' : '';
@@ -754,7 +760,8 @@ function showDashboard() {
   if (frame) frame.classList.remove('hidden');
   if (iframe && iframe.getAttribute('src') !== DASH_URL) iframe.setAttribute('src', DASH_URL);
   document.getElementById('main').style.display = 'none';
-  document.getElementById('voiceSection').style.display = 'none';
+  const vr = document.getElementById('voiceResult');
+  if (vr) vr.classList.add('hidden');
   renderNav();
 }
 
@@ -763,7 +770,6 @@ function hideDashboard() {
   const frame = document.getElementById('dashFrame');
   if (frame) frame.classList.add('hidden');
   document.getElementById('main').style.display = '';
-  document.getElementById('voiceSection').style.display = '';
 }
 
 function renderMain() {
@@ -862,14 +868,17 @@ function renderMain() {
     }).join('');
   }
 
-  // 新增輸入框
+  // 新增輸入框（麥克風按鈕在輸入框旁）
+  const micBtn = voiceSupported ? '<button id="micBtn" class="mic-btn" title="語音輸入">🎤</button>' : '';
   const addForm = isExpense
     ? `<div class="add-form">
          <input id="addText" placeholder="例如：全家 買飲料 50元｜薪水 50000元">
+         ${micBtn}
          <button id="addBtn">新增</button>
        </div>`
     : `<div class="add-form">
          <input id="addText" placeholder="輸入${cat.name}內容...">
+         ${micBtn}
          <button id="addBtn">新增</button>
        </div>`;
 

@@ -8,26 +8,23 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>個人平台</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
 
 <!-- 頂部 -->
 <header>
-  <h1>個人平台 <small style="font-size:.7rem;color:var(--text2);font-weight:400" id="verTag">v23</small></h1>
+  <h1>個人平台 <small style="font-size:.7rem;color:var(--text2);font-weight:400" id="verTag">v24</small></h1>
 </header>
 
-<!-- 語音輸入區 -->
-<section id="voiceSection">
-  <button id="voiceBtn" title="語音輸入">🎤</button>
-  <div id="voiceResult" class="hidden">
-    <p id="voiceText"></p>
-    <div class="category-select">
-      <button id="saveVoice">儲存</button>
-      <button id="cancelVoice">取消</button>
-    </div>
+<!-- 語音辨識結果（浮動列，貼齊底部導航上方） -->
+<div id="voiceResult" class="hidden">
+  <p id="voiceText"></p>
+  <div class="category-select">
+    <button id="saveVoice">儲存</button>
+    <button id="cancelVoice">取消</button>
   </div>
-</section>
+</div>
 
 <!-- 主要內容區（JS 動態產生） -->
 <main id="main"></main>
@@ -56,6 +53,6 @@
 <!-- 底部導航（JS 動態產生） -->
 <nav id="nav"></nav>
 
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>
