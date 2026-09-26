@@ -831,11 +831,11 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v54</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v55</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
-          <a class="home-link" href="https://www.google.com/maps?q=%E5%87%B1%E5%BE%B7%E8%81%96%E9%81%93%E9%99%A2" target="_blank" rel="noopener">🛕凱德</a>
+          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🛕凱德</a>
         </div>
       </div>
       <div class="home-grid">
