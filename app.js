@@ -199,6 +199,7 @@ function setupVoice() {
 
   let recognition = null;
   let finalText = '';
+  let finalCount = 0;  // 已累積的最終結果數（防重複輸出）
   let stoppedByUser = false;
   let silenceTimer = null;
   const SILENCE_MS = 3000;  // 斷音超過 3 秒自動停止
@@ -269,6 +270,7 @@ function setupVoice() {
     recognition.lang = 'zh-TW';
     recognition.interimResults = true;
     recognition.continuous = true;   // 連續辨識：整段話都能辨識，不因短暫停頓就中斷
+    finalCount = 0;  // 新辨識工作階段，最終結果計數歸零
 
     // 偵測辨識是否真的啟動（無後端的瀏覽器會靜默卡住不觸發任何事件）
     let started = false;
@@ -285,11 +287,15 @@ function setupVoice() {
 
     recognition.onresult = (event) => {
       let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         const r = event.results[i];
         if (r.isFinal) {
-          finalText += r[0].transcript;
-        } else {
+          // 只累積「新的」最終結果（i >= finalCount），避免 Chrome 重複回報同一段
+          if (i >= finalCount) {
+            finalText += r[0].transcript;
+            finalCount = i + 1;
+          }
+        } else if (i >= finalCount) {
           interim += r[0].transcript;
         }
       }
@@ -419,7 +425,7 @@ function extractItem(text, store) {
 // === 收支分類（食/衣/住/行/道場/其他）===
 const EXPENSE_CATS = ['食', '衣', '住', '行', '道場', '其他'];
 
-// 分類配色（餅狀圖 + 最新消費標籤用）
+// 分類配色（餅狀圖圖例用）
 const CAT_COLORS = { '食': '#f59e0b', '衣': '#8b5cf6', '住': '#10b981', '行': '#3b82f6', '道場': '#ef4444', '其他': '#9ca3af' };
 
 function expenseCat(store, text) {
@@ -573,20 +579,6 @@ function renderHome() {
     catSum[c] = (catSum[c] || 0) + (it.amount || 0);
   }
 
-  // 最新消費三筆（按日期降序）
-  const dateKey = d => { const p = String(d || '').split('/').map(Number); return (p[0] || 0) * 100 + (p[1] || 0); };
-  const latestExp = [...expList].sort((a, b) => dateKey(b.date) - dateKey(a.date)).slice(0, 3);
-  const latestHtml = latestExp.map(it => {
-    const store = (it.store && it.store !== '手動') ? it.store : (it.item || it.text || '');
-    const c = it.cat || expenseCat(it.store, it.text);
-    return `<div class="latest-item">
-      <span class="latest-store">${escHtml(store)}</span>
-      <span class="latest-badge" style="color:${CAT_COLORS[c] || '#9ca3af'}">${c}</span>
-      <span class="latest-amt">-NT$${(it.amount || 0).toLocaleString()}</span>
-      <span class="latest-date">${it.date || ''}</span>
-    </div>`;
-  }).join('');
-
   // 待辦
   const todos = getItems('todo');
   const pending = todos.filter(t => !t.completed).length;
@@ -619,8 +611,6 @@ function renderHome() {
           </div>
           <div class="home-sec-title">🍽️ 食衣住行比例</div>
           ${renderPieChart(catSum)}
-          <div class="home-sec-title">🛒 最新消費</div>
-          <div class="home-latest">${latestHtml || '<div class="latest-empty">本月尚無消費</div>'}</div>
         </div>
         <div class="home-card" onclick="goTab('todo')">
           <div class="home-card-title">✓ 待辦</div>
