@@ -262,7 +262,7 @@ function setupVoice() {
     const ph = inp.placeholder;
     inp.placeholder = '🤖 加標點中…';
     let out = null;
-    try { out = await polishText(raw, 9000); } catch (e) { out = null; }
+    try { out = await polishText(raw, 12000); } catch (e) { out = null; }
     polishing = false;
     const now = addInput();
     if (!now) return;
@@ -275,12 +275,14 @@ function setupVoice() {
     autoGrowInput(now);
   }
 
-  function stopListening() {
+  async function stopListening() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
-    autoPunctuate();  // 講完自動加標點（DeepSeek，聲寫AI 同一套）
-    startAutoSave();  // 語音停止後，5 秒未觸碰 → 自動存入
+    // 關鍵：加標點期間先不要自動存 —— 若 DeepSeek 比較慢（>5 秒），原本會先把「還沒標點」的版本存進去，標點回來就來不及了
+    if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+    await autoPunctuate();   // 先等標點進入輸入框（最多 12 秒；連不上會退回本地補句號）
+    startAutoSave();         // 標點就位後才開始 5 秒自動存入倒數
   }
 
   // 斷音計時：有收到語音就重置，超過 SILENCE_MS 沒聲音則自動停止
@@ -750,7 +752,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v48</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v49</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
