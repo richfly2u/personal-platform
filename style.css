@@ -120,6 +120,18 @@ main {
   line-height: 1.7;
 }
 .habit-row b { color: var(--text); font-size: 0.86rem; }
+/* 習慣資料要登入：卡片裡的登入提示按鈕 */
+.habit-login-btn {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  color: var(--accent2);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
 .home-pos { color: #047857; }
 .home-neg { color: #dc2626; }
 

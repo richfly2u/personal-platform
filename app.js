@@ -684,17 +684,72 @@ function renderAll() {
 // 兩支 app 同網域(richfly2u.github.io) → 共用 localStorage 的 dashboard_key（板名）
 // 直接讀 Firestore（公開讀取），數字算法與儀表板完全一致
 const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/bentodish-alan/databases/(default)/documents/dashboard/';
-const FIRESTORE_KEY = 'AIzaSyCRazQsleeT4H4Nt6VrqI1KGlfVenc';
+const FIRESTORE_KEY = 'AIzaSyCRazQsleeTILp7VO5zYbeiy9dtOxrVenc';
 let habitCache = { t: 0, data: null };
+let habitAuthChecked = false;
+
+// 習慣資料現在要登入才讀得到（Firestore 規則限制本人 uid，2026-09-26 前賢要求改用登入）
+function habitAuth() {
+  if (typeof firebase === 'undefined' || !firebase.auth) return null;
+  if (habitAuth._a) return habitAuth._a;
+  try {
+    let fapp;
+    try { fapp = firebase.app('pp-habit'); }
+    catch (e) {
+      fapp = firebase.initializeApp({ apiKey: FIRESTORE_KEY, authDomain: 'bentodish-alan.firebaseapp.com', projectId: 'bentodish-alan' }, 'pp-habit');
+    }
+    habitAuth._a = firebase.auth(fapp);
+  } catch (e) { return null; }
+  return habitAuth._a;
+}
+
+async function signInHabitStats() {
+  const a = habitAuth();
+  if (!a) { alert('登入元件沒載入（連上網路後重開即可）'); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await a.signInWithPopup(provider);
+  } catch (e) {
+    const c = (e && e.code) || String(e);
+    const fb = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request',
+      'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'];
+    if (fb.includes(c)) {
+      try { await a.signInWithRedirect(provider); return; } catch (e2) { alert('登入失敗：' + ((e2 && e2.code) || e2)); return; }
+    }
+    alert('登入失敗：' + c + '\n（請用 alansnoopy@gmail.com 登入）');
+    return;
+  }
+  habitAuthChecked = true;
+  habitCache = { t: 0, data: null };
+  refreshHabitStats();
+}
 
 async function fetchHabitStats() {
   if (habitCache.data && Date.now() - habitCache.t < 60000) return habitCache.data;
+  const a = habitAuth();
+  if (!a) return { unavailable: true };
+  if (!habitAuthChecked) {
+    // 等 SDK 還原上次登入狀態（最多 3 秒），才不會每次開首頁都要手動登入
+    await new Promise(res => {
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; res(); } };
+      a.onAuthStateChanged(() => done());
+      setTimeout(done, 3000);
+    });
+    habitAuthChecked = true;
+  }
+  if (!a.currentUser) return { needLogin: true };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 8000);
   try {
     let board = 'alan';
     try { board = localStorage.getItem('dashboard_key') || 'alan'; } catch (e) {}
-    const resp = await fetch(`${FIRESTORE_BASE}${encodeURIComponent(board)}?key=${FIRESTORE_KEY}`, { signal: ctl.signal });
+    const tok = await a.currentUser.getIdToken();
+    const resp = await fetch(`${FIRESTORE_BASE}${encodeURIComponent(board)}`, {
+      headers: { Authorization: 'Bearer ' + tok },
+      signal: ctl.signal
+    });
+    if (resp.status === 401 || resp.status === 403) { habitAuthChecked = false; return { needLogin: true }; }
     if (!resp.ok) return null;
     const doc = await resp.json();
     const fields = doc.fields || {};
@@ -724,11 +779,19 @@ async function refreshHabitStats() {
   const d = await fetchHabitStats();
   const box = document.getElementById('habitStats');   // 重取：非同步期間畫面可能已重繪
   if (!box) return;
-  box.innerHTML = d
-    ? `<div class="habit-row"><span>總項目</span><b>${d.total} 項</b></div>
+  if (!d || d.unavailable) {
+    box.innerHTML = `<div class="home-line">暫時讀不到，點一下進入</div>`;
+    return;
+  }
+  if (d.needLogin) {
+    box.innerHTML = `<button class="habit-login-btn" id="habitLoginBtn">🔑 點一下用 Google 登入，顯示習慣數字</button>`;
+    const b = document.getElementById('habitLoginBtn');
+    if (b) b.addEventListener('click', ev => { ev.stopPropagation(); ev.preventDefault(); signInHabitStats(); });
+    return;
+  }
+  box.innerHTML = `<div class="habit-row"><span>總項目</span><b>${d.total} 項</b></div>
        <div class="habit-row"><span>已完成</span><b>${d.done}</b></div>
-       <div class="habit-row"><span>今日進度</span><b>${d.rate}%</b></div>`
-    : `<div class="home-line">暫時讀不到，點一下進入</div>`;
+       <div class="habit-row"><span>今日進度</span><b>${d.rate}%</b></div>`;
 }
 
 function renderHome() {
@@ -768,7 +831,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v51</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v52</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
