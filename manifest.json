@@ -1,6 +1,6 @@
 {
-  "name": "個人平台",
-  "short_name": "個人平台",
+  "name": "榮哥動起來",
+  "short_name": "榮哥動起來",
   "description": "語音輸入自動分類：待辦、日記、收支、靈感",
   "start_url": "index.html",
   "scope": "./",
