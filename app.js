@@ -40,6 +40,8 @@ let autoSaveTimer = null;  // 語音後 5 秒未觸碰 → 自動存入計時
 const AUTOSAVE_MS = 5000;
 // 本次剛新增的項目 id（只存在記憶體，重新整理後就歸位到原本位置）
 const pendingIds = new Set();
+// 收支「明細」目前展開哪些分類（記憶體；重新渲染後要維持展開狀態）
+const openCats = new Set();
 
 function clearAutoSave() {
   if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
@@ -142,6 +144,18 @@ function migrateOldData() {
 function getItems(catId) {
   if (!appData.items[catId]) appData.items[catId] = [];
   return appData.items[catId];
+}
+
+// 依 id 找出項目真正所在的陣列
+// （收支頁渲染用的 items 是「當月過濾後的複本」，對它 splice 不會刪到資料）
+function findItemById(id) {
+  for (const catId of Object.keys(appData.items)) {
+    const arr = appData.items[catId];
+    if (!Array.isArray(arr)) continue;
+    const idx = arr.findIndex(i => i.id === id);
+    if (idx >= 0) return { arr, idx };
+  }
+  return null;
 }
 
 function uid() {
@@ -562,6 +576,9 @@ function toggleCatDetail(btn) {
   if (!list) return;
   const shown = list.classList.toggle('show');
   btn.classList.toggle('open', shown);
+  // 記住展開狀態：重新渲染（刪除/編輯/換月）後要維持展開，不要又收起來
+  const cat = btn.dataset.cat;
+  if (cat) { if (shown) openCats.add(cat); else openCats.delete(cat); }
 }
 
 // 每日花費曲線圖（SVG 直條圖）
@@ -676,7 +693,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v42</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v43</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -846,14 +863,15 @@ function renderMain() {
         detailHtml += `<li class="cat-fixed"><span style="flex:1">固定（房租）</span><span style="font-weight:600;color:var(--danger)">-NT$${MONTHLY_HOUSING.toLocaleString()}</span></li>`;
       }
       detailHtml += catItems.map(it => (editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it))).join('');
+      const opened = openCats.has(c);
       return `
         <div class="cat-row">
           <span class="cat-name">${c}</span>
           <span class="cat-bar"><span class="cat-fill" style="width:${Math.round(v/catMax*100)}%"></span></span>
           <span class="cat-amt">NT$${v.toLocaleString()}</span>
         </div>
-        <button type="button" class="cat-toggle" onclick="toggleCatDetail(this)">明細</button>
-        <ul class="cat-detail">${detailHtml || '<li class="cat-empty">本月無支出</li>'}</ul>`;
+        <button type="button" class="cat-toggle${opened ? ' open' : ''}" data-cat="${c}" onclick="toggleCatDetail(this)">明細</button>
+        <ul class="cat-detail${opened ? ' show' : ''}">${detailHtml || '<li class="cat-empty">本月無支出</li>'}</ul>`;
     }).join('');
 
     summaryHtml = `
@@ -988,9 +1006,10 @@ function renderMain() {
     main.querySelectorAll('.del-btn').forEach(el => {
       el.addEventListener('click', () => {
         const id = el.dataset.id;
-        const idx = items.findIndex(i => i.id === id);
-        if (idx >= 0) {
-          items.splice(idx, 1);
+        // 注意：收支頁的 items 是當月過濾後的複本，splice 它不會刪到資料 → 用 findItemById
+        const hit = findItemById(id);
+        if (hit) {
+          hit.arr.splice(hit.idx, 1);
           pendingIds.delete(id);
           saveData();
           renderMain();
