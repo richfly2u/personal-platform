@@ -652,7 +652,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v39</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v40</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -872,7 +872,7 @@ function renderMain() {
     }).join('');
   }
 
-  // 新增區（麥克風獨立一顆在上、輸入框緊接其下；新增後項目顯示在輸入框下方）
+  // 新增區（置於標題下方最上方；麥克風獨立一顆在上、輸入框緊接其下，新增後項目顯示在輸入框下方）
   const micBtn = voiceSupported ? '<button id="micBtn" class="mic-btn" title="語音輸入">🎤</button>' : '';
   const addForm = isExpense
     ? `<div class="add-form">
@@ -893,8 +893,8 @@ function renderMain() {
   main.innerHTML = `
     <section class="tab-content active">
       <h2>${cat.icon} ${cat.name}</h2>
-      ${summaryHtml}
       ${addForm}
+      ${summaryHtml}
       <div id="itemList">${listHtml}</div>
       ${chartHtml}
     </section>`;
