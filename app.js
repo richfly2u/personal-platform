@@ -195,6 +195,21 @@ function setupVoice() {
     btn.classList.add('listening');
     btn.textContent = '🔴';
 
+    // 偵測辨識是否真的啟動（Chromium 等無後端會靜默卡住不觸發任何事件）
+    let started = false;
+    const stallTimer = setTimeout(() => {
+      if (!started) {
+        stoppedByUser = true;
+        try { recognition.stop(); } catch(e) {}
+        stopListening();
+        voiceText.textContent = '此瀏覽器不支援語音辨識，請改用 Chrome 或手機';
+        voiceText.style.color = 'var(--danger)';
+        resultDiv.classList.remove('hidden');
+      }
+    }, 3000);
+
+    recognition.onstart = () => { started = true; clearTimeout(stallTimer); };
+
     recognition.onresult = (event) => {
       let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -205,13 +220,20 @@ function setupVoice() {
           interim += r[0].transcript;
         }
       }
+      voiceText.style.color = '';
       voiceText.textContent = finalText + interim;
       resultDiv.classList.remove('hidden');
     };
 
     recognition.onerror = (e) => {
+      clearTimeout(stallTimer);
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
         stopListening();
+        voiceText.style.color = 'var(--danger)';
+        voiceText.textContent = e.error === 'not-allowed'
+          ? '請允許麥克風權限後再試'
+          : '語音辨識失敗（' + e.error + '），請改用 Chrome 或手機';
+        resultDiv.classList.remove('hidden');
       }
     };
 
@@ -551,7 +573,7 @@ function renderMain() {
       if (c === '住' && MONTHLY_HOUSING > 0) {
         detailHtml += `<li class="cat-fixed"><span style="flex:1">固定（房租）</span><span style="font-weight:600;color:var(--danger)">-NT$${MONTHLY_HOUSING.toLocaleString()}</span></li>`;
       }
-      detailHtml += catItems.map(it => renderItem(cat, it)).join('');
+      detailHtml += catItems.map(it => (editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it))).join('');
       return `
         <div class="cat-row">
           <span class="cat-name">${c}</span>
