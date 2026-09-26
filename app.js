@@ -186,28 +186,64 @@ function setupVoice() {
     }
   }
 
+  // 先確認麥克風權限（Chrome 首次點擊會跳權限提示，未授權前 onstart 不會觸發，
+  // 導致原本 3 秒偵測誤判「不支援」）
+  async function ensureMicPermission() {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const st = await navigator.permissions.query({ name: 'microphone' });
+        if (st.state === 'granted') return true;
+        if (st.state === 'denied') return false;
+      }
+      // prompt 狀態：用 getUserMedia 觸發權限提示
+      voiceText.textContent = '請允許麥克風權限…';
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function startListening() {
     stoppedByUser = false;
+    btn.classList.add('listening');
+    btn.textContent = '🔴';
+    voiceText.style.color = '';
+    resultDiv.classList.remove('hidden');
+
+    ensureMicPermission().then(granted => {
+      if (!granted) {
+        stopListening();
+        voiceText.style.color = 'var(--danger)';
+        voiceText.textContent = '未允許麥克風權限，無法語音輸入（可點網址列左側 🔒 重新開啟）';
+        return;
+      }
+      beginRecognition();
+    });
+  }
+
+  function beginRecognition() {
     recognition = new SpeechRecognition();
     recognition.lang = 'zh-TW';
     recognition.interimResults = true;
     recognition.continuous = false;   // 關鍵：每段話乾淨單一結果，不重複
 
-    btn.classList.add('listening');
-    btn.textContent = '🔴';
+    voiceText.style.color = '';
+    voiceText.textContent = '請說話…';
 
-    // 偵測辨識是否真的啟動（Chromium 等無後端會靜默卡住不觸發任何事件）
+    // 偵測辨識是否真的啟動（無後端的瀏覽器會靜默卡住不觸發任何事件）
     let started = false;
     const stallTimer = setTimeout(() => {
       if (!started) {
         stoppedByUser = true;
         try { recognition.stop(); } catch(e) {}
         stopListening();
-        voiceText.textContent = '此瀏覽器不支援語音辨識，請改用 Chrome 或手機';
+        voiceText.textContent = '語音辨識無法啟動，請確認已連網後重試';
         voiceText.style.color = 'var(--danger)';
         resultDiv.classList.remove('hidden');
       }
-    }, 3000);
+    }, 8000);
 
     recognition.onstart = () => { started = true; clearTimeout(stallTimer); };
 
@@ -233,7 +269,7 @@ function setupVoice() {
         voiceText.style.color = 'var(--danger)';
         voiceText.textContent = e.error === 'not-allowed'
           ? '請允許麥克風權限後再試'
-          : '語音辨識失敗（' + e.error + '），請改用 Chrome 或手機';
+          : '語音辨識失敗（' + e.error + '），請確認網路後重試';
         resultDiv.classList.remove('hidden');
       }
     };
