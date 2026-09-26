@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """個人平台同步伺服器 — HTTPS + /sync + /api/todo-done"""
-import http.server, ssl, os, json, re, subprocess, sys, threading, time, datetime, urllib.request
+import http.server, ssl, os, json, re, subprocess, sys, threading, time, datetime, urllib.request, socket
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PORT = 9443
@@ -211,17 +211,20 @@ def _load_deepseek_key():
     return _DEEPSEEK_KEY
 
 def polish_text(text):
-    """DeepSeek 潤稿：加標點 + 潤飾（用於日記語音）"""
+    """DeepSeek 加標點（與「聲寫AI」同一套：轉繁體、加標點、不改寫內容）"""
     key = _load_deepseek_key()
     if not key:
         return {'ok': False, 'error': '無 DeepSeek key'}
+    example = '今天天氣很好我想去公園散步順便買一杯咖啡'
+    example_out = '今天天氣很好，我想去公園散步，順便買一杯咖啡。'
+    prompt = ('範例：\n輸入：' + example + '\n輸出：' + example_out +
+              '\n\n請做同樣的事：轉繁體、加標點。\n輸入：' + text + '\n輸出：')
     payload = {
         'model': 'deepseek-chat',
         'messages': [
-            {'role': 'system', 'content': '你是繁體中文潤稿助手。把使用者輸入的語音轉文字加上正確標點符號並潤飾成通順的句子，保留原意與細節，不增刪事實，只輸出潤飾後的文字，不要任何解釋或前言。'},
-            {'role': 'user', 'content': text}
+            {'role': 'user', 'content': prompt}
         ],
-        'temperature': 0.2,
+        'temperature': 0.3,
         'max_tokens': 800
     }
     try:
@@ -233,6 +236,8 @@ def polish_text(text):
         with urllib.request.urlopen(req, timeout=60) as r:
             data = json.loads(r.read())
         out = data['choices'][0]['message']['content'].strip()
+        if '輸出：' in out:            # 只取結果，不要模型的說明文字
+            out = out.split('輸出：')[-1].strip()
         return {'ok': True, 'text': out}
     except Exception as e:
         return {'ok': False, 'error': str(e)}
@@ -254,6 +259,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def _cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
+        # Chrome「私有網路存取」(PNA)：公開網頁(github.io)連區網 IP 時，預檢要回這個才放行
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
@@ -277,6 +284,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = self.path.split('?')[0]
+        if url == '/api/ping':
+            # 便宜的存在探測：手機 app 用它找出伺服器的正確 IP（IP 會因 DHCP 變動）
+            self._json({'ok': True, 'service': 'personal-platform-sync', 'polish': bool(_load_deepseek_key())})
+            return
         if url == '/sync':
             # 同步（同步執行，完成才回傳）
             result = run_sync()
@@ -354,9 +365,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     os.chdir(ROOT)
+    try:
+        _s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        _s.connect(('8.8.8.8', 80))
+        _ip = _s.getsockname()[0]
+        _s.close()
+    except Exception:
+        _ip = '127.0.0.1'
     httpd = http.server.ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(os.path.join(ROOT, 'cert.pem'), os.path.join(ROOT, 'key.pem'))
     httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
     print(f'HTTPS sync server on :{PORT}', flush=True)
+    print(f'  → 手機請連 https://{_ip}:{PORT}/  (區網 IP，會隨路由器 DHCP 變動)', flush=True)
     httpd.serve_forever()

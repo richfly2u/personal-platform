@@ -277,10 +277,37 @@ function setupVoice() {
     if (inp) inp.placeholder = msg;
   }
 
+  // 語音講完自動加標點（DeepSeek／聲寫AI 同一套）
+  // 顯示在輸入框讓前賢一眼確認成功；5 秒自動存入之前就會跑完（實測 1 秒左右）
+  let polishing = false;
+  let polishedFor = '';   // 已加過標點的那段原文（避免重複呼叫 API）
+  async function autoPunctuate() {
+    const inp = addInput();
+    if (!inp) return;
+    const raw = inp.value.trim();
+    if (!raw || raw.length < 3 || polishing || polishedFor === raw) return;
+    polishing = true;
+    const ph = inp.placeholder;
+    inp.placeholder = '🤖 加標點中…';
+    let out = null;
+    try { out = await polishText(raw, 9000); } catch (e) { out = null; }
+    polishing = false;
+    const now = addInput();
+    if (!now) return;
+    now.placeholder = ph;
+    if (now.value.trim() !== raw) return;   // 期間被編輯過／已存入 → 不覆蓋
+    const text = (out && out.trim()) ? out.trim() : localPolish(raw);  // 連不上就退回本地補句號
+    polishedFor = text;
+    committed = text;
+    now.value = text;
+    autoGrowInput(now);
+  }
+
   function stopListening() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+    autoPunctuate();  // 講完自動加標點（DeepSeek，聲寫AI 同一套）
     startAutoSave();  // 語音停止後，5 秒未觸碰 → 自動存入
   }
 
@@ -411,17 +438,24 @@ function setupVoice() {
   });
 }
 
-// 日記語音潤稿：DeepSeek 加標點 + 潤飾（需在家連本機伺服器）
-async function polishText(text) {
+// 語音加標點：DeepSeek（與「聲寫AI」同一套：轉繁體、加標點、不改寫內容）
+// 走 kindhome.net（自己的 VPS，正式 HTTPS）→ 在家/在外面都能用，也不會跳任何授權詢問
+const POLISH_API = 'https://kindhome.net/api/polish';
+
+async function polishText(text, ms) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms || 9000);
   try {
-    const resp = await fetch(`${SYNC_HOST}/api/polish`, {
+    const resp = await fetch(POLISH_API, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text})
+      body: JSON.stringify({text}),
+      signal: ctl.signal
     });
     const data = await resp.json();
     if (data.ok && data.text) return data.text;
   } catch(e) {}
+  finally { clearTimeout(timer); }
   return null;
 }
 
@@ -693,7 +727,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v44</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v45</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
