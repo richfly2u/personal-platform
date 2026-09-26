@@ -580,7 +580,7 @@ function renderHome() {
       <h2>🏠 首頁</h2>
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">
-          <div class="home-card-title">💰 收支</div>
+          <div class="home-card-title">💰 ${vMonth}月收支</div>
           <div class="home-sum-row">
             <div class="home-sum"><span class="home-sum-label">收入</span><b>NT$${incTotal.toLocaleString()}</b></div>
             <div class="home-sum"><span class="home-sum-label">支出</span><b>NT$${expTotal.toLocaleString()}</b></div>
@@ -612,7 +612,7 @@ function renderHome() {
         <div class="home-sec-title">🔗 常用連結</div>
         <div class="home-link-row">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener"><span class="home-link-ico">🍱</span><span>便當組合</span></a>
-          <a class="home-link" href="https://kindhome.net/" target="_blank" rel="noopener"><span class="home-link-ico">🏢</span><span>凱鴻</span></a>
+          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener"><span class="home-link-ico">🏢</span><span>凱鴻</span></a>
           <a class="home-link" href="https://www.google.com/maps?q=%E5%87%B1%E5%BE%B7%E8%81%96%E9%81%93%E9%99%A2" target="_blank" rel="noopener"><span class="home-link-ico">🛕</span><span>凱德</span></a>
         </div>
       </div>
