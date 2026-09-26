@@ -42,6 +42,15 @@ const AUTOSAVE_MS = 5000;
 function clearAutoSave() {
   if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 }
+// 輸入框自動長高（文字多時可完整看到，最高 200px 後可捲動）
+function autoGrowInput(el) {
+  if (!el) return;
+  const MAX = 200;
+  el.style.height = 'auto';
+  const h = el.scrollHeight;
+  el.style.height = (h > MAX ? MAX : h) + 'px';
+  el.style.overflowY = h > MAX ? 'auto' : 'hidden';
+}
 // 語音停止且有文字時，啟動 5 秒自動存入（前賢觸碰螢幕/輸入會重設）
 function startAutoSave() {
   clearAutoSave();
@@ -223,7 +232,7 @@ function setupVoice() {
   // 語音文字直接寫進輸入框（即時）
   function setInput(text) {
     const inp = addInput();
-    if (inp) inp.value = text;
+    if (inp) { inp.value = text; autoGrowInput(inp); }
   }
   // 錯誤訊息：暫時顯示在輸入框 placeholder
   function showInputError(msg) {
@@ -620,13 +629,14 @@ function renderHome() {
     catSum[c] = (catSum[c] || 0) + (it.amount || 0);
   }
 
-  // 待辦
+  // 待辦（未完成前三項）
   const todos = getItems('todo');
-  const pending = todos.filter(t => !t.completed).length;
+  const pendingTodos = todos.filter(t => !t.completed);
+  const topTodos = pendingTodos.slice(0, 3);
 
-  // 日記（最近一篇）
+  // 日記（最近兩篇）
   const diaries = getItems('diary');
-  const lastDiary = diaries.length ? [...diaries].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] : null;
+  const topDiaries = [...diaries].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 2);
 
   // 靈感（最近一則）
   const ideas = getItems('idea');
@@ -655,11 +665,16 @@ function renderHome() {
         </div>
         <div class="home-card" onclick="goTab('todo')">
           <div class="home-card-title">✓ 待辦</div>
-          <div class="home-line">${pending ? `未完成 <b>${pending}</b> 筆` : '全部完成 🎉'}</div>
+          ${topTodos.length
+            ? topTodos.map(t => `<div class="home-line">${escHtml((t.text || '').slice(0, 16))}</div>`).join('')
+              + (pendingTodos.length > 3 ? `<div class="home-line home-line-more">另有 ${pendingTodos.length - 3} 筆未完成</div>` : '')
+            : '<div class="home-line">全部完成 🎉</div>'}
         </div>
         <div class="home-card" onclick="goTab('diary')">
           <div class="home-card-title">📅 日記</div>
-          <div class="home-line">${lastDiary ? `${lastDiary.date} ${escHtml((lastDiary.text || '').slice(0, 14))}` : '尚無日記'}</div>
+          ${topDiaries.length
+            ? topDiaries.map(d => `<div class="home-line">${d.date || ''} ${escHtml((d.text || '').slice(0, 14))}</div>`).join('')
+            : '<div class="home-line">尚無日記</div>'}
         </div>
         <div class="home-card" onclick="goTab('idea')">
           <div class="home-card-title">💡 靈感</div>
@@ -852,12 +867,12 @@ function renderMain() {
   const micBtn = voiceSupported ? '<button id="micBtn" class="mic-btn" title="語音輸入">🎤</button>' : '';
   const addForm = isExpense
     ? `<div class="add-form">
-         <input id="addText" placeholder="例如：全家 買飲料 50元｜薪水 50000元">
+         <textarea id="addText" rows="2" placeholder="例如：全家 買飲料 50元｜薪水 50000元"></textarea>
          ${micBtn}
          <button id="addBtn">新增</button>
        </div>`
     : `<div class="add-form">
-         <input id="addText" placeholder="輸入${cat.name}內容...">
+         <textarea id="addText" rows="2" placeholder="輸入${cat.name}內容..."></textarea>
          ${micBtn}
          <button id="addBtn">新增</button>
        </div>`;
@@ -877,8 +892,10 @@ function renderMain() {
   if (addBtn) {
     addBtn.addEventListener('click', () => submitAddText());
     addText.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') addBtn.click();
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addBtn.click(); }
     });
+    addText.addEventListener('input', () => autoGrowInput(addText));
+    autoGrowInput(addText);
   }
 
   // 列表事件

@@ -114,6 +114,7 @@ main {
 .home-line b {
   color: var(--text);
 }
+.home-line-more { opacity: 0.72; }
 .home-pos { color: #047857; }
 .home-neg { color: #dc2626; }
 
@@ -785,14 +786,24 @@ nav {
   display: flex;
   gap: 8px;
   margin: 12px 0 24px;
+  align-items: flex-start;
 }
-.add-form input {
+.add-form input,
+.add-form textarea {
   flex: 1;
+  min-width: 0;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 0.95rem;
   background: white;
+  font-family: inherit;
+}
+.add-form textarea {
+  resize: none;
+  min-height: 48px;
+  line-height: 1.5;
+  overflow-y: hidden;
 }
 .add-form button {
   padding: 10px 18px;
