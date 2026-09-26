@@ -101,6 +101,13 @@ main {
 .home-line b {
   color: var(--text);
 }
+/* 首頁日記卡：只顯示日期，日期字小一點 */
+.home-date {
+  font-size: 0.68rem;
+  color: var(--text2);
+  opacity: 0.85;
+  margin-right: 5px;
+}
 .home-line-more { opacity: 0.72; }
 .home-pos { color: #047857; }
 .home-neg { color: #dc2626; }

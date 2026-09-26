@@ -699,7 +699,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v46</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v47</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -727,7 +727,10 @@ function renderHome() {
         <div class="home-card" onclick="goTab('diary')">
           <div class="home-card-title">📅 日記</div>
           ${topDiaries.length
-            ? topDiaries.map(d => `<div class="home-line">${d.date || ''} ${escHtml((d.text || '').slice(0, 14))}</div>`).join('')
+            ? topDiaries.map(d => {
+                const day = String(d.date || '').split(' ')[0];   // 只取日期，不顯示時間
+                return `<div class="home-line"><span class="home-date">${day}</span>${escHtml((d.text || '').slice(0, 14))}</div>`;
+              }).join('')
             : '<div class="home-line">尚無日記</div>'}
         </div>
         <div class="home-card" onclick="goTab('idea')">
