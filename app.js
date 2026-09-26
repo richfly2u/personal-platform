@@ -96,9 +96,6 @@ function restoreNav() {
   } catch(e) {}
 }
 
-// 本機伺服器（語音潤飾/待辦勾選/行事曆同步用）
-const SYNC_HOST = (location.hostname === '192.168.0.75') ? location.origin : 'https://192.168.0.75:9443';
-
 // === 資料讀寫 ===
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -202,31 +199,6 @@ async function loadSyncData() {
           });
         }
       }
-    }
-  } catch(e) {}
-
-  try {
-    // easynote 待辦只匯入一次，避免使用者刪除後每次重整又被加回來
-    const todoRes = await fetch('data/todos.json');
-    if (todoRes.ok && !localStorage.getItem('easynote_imported')) {
-      const todosData = await todoRes.json();
-      const todoItems = getItems('todo');
-      const hasEasynote = todoItems.some(t => t.source === 'easynote');
-      if (!hasEasynote) {
-        const existingTexts = new Set(todoItems.map(t => t.text));
-        for (const item of todosData.items || []) {
-          if (!existingTexts.has(item.text)) {
-            todoItems.push({
-              id: 'esynote_' + uid(),
-              text: item.text,
-              completed: item.completed || false,
-              date: today(),
-              source: 'easynote'
-            });
-          }
-        }
-      }
-      localStorage.setItem('easynote_imported', '1');
     }
   } catch(e) {}
 
@@ -727,7 +699,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v45</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v46</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1009,24 +981,6 @@ function renderMain() {
         it.completed = checking;
         saveData();
         renderMain();
-
-        // easynote 來源：勾選完成時回寫手機 easynote
-        if (checking && it.source === 'easynote') {
-          try {
-            const resp = await fetch(`${SYNC_HOST}/api/todo-done`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({text: it.text})
-            });
-            const result = await resp.json();
-            if (!result.ok) {
-              console.warn('easynote writeback fail:', result);
-              alert(result.error || '回寫失敗（需手機解鎖、在家裡 WiFi）');
-            }
-          } catch (e) {
-            alert('回寫失敗：需在家裡 WiFi');
-          }
-        }
       });
     });
     // 編輯（itemList 收入 + 分類明細支出）
