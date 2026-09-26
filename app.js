@@ -104,6 +104,10 @@ function loadData() {
       // 移除已刪除的「便利貼 sticky」分類（v23 撤銷，但舊 localStorage 仍殘留 sticky 分類→導航還看得到便利貼）
       if (saved.categories) appData.categories = saved.categories.filter(c => c.id !== 'sticky');
       if (saved.items) { appData.items = saved.items; delete appData.items.sticky; }
+      // 舊分類修正：崇德發是餐廳（食），曾因 /崇德/ 關鍵字被歸「道場」而存在項目裡
+      for (const it of (appData.items.expense || [])) {
+        if (it.cat === '道場' && /崇德發/.test((it.store || '') + (it.text || ''))) it.cat = '食';
+      }
     } catch(e) {}
   }
 }
@@ -484,7 +488,7 @@ const CAT_COLORS = { '食': '#f59e0b', '衣': '#8b5cf6', '住': '#10b981', '行'
 function expenseCat(store, text) {
   const s = (store + ' ' + (text || '')).toLowerCase();
   // 道場（優先）
-  if (/道場|佛堂|法會|辦道|供品|香燭|點傳|前賢|道親|發一|崇德|素食餐廳|素菜館/.test(s)) return '道場';
+  if (/道場|佛堂|法會|辦道|供品|香燭|點傳|前賢|道親|發一|崇德(?!發)|素食餐廳|素菜館/.test(s)) return '道場';
   // 行
   if (/中油|加油站|加油|汽油|柴油|捷運|高鐵|台鐵|客運|公車|計程車|小黃|停車|機車|汽車|油錢|悠遊卡|過路費|高鐵票|車票/.test(s)) return '行';
   // 住
@@ -492,7 +496,7 @@ function expenseCat(store, text) {
   // 衣
   if (/衣服|上衣|褲子|鞋子|襪子|帽子|外套|飾品|配件|包包|皮包|皮帶|百貨/.test(s)) return '衣';
   // 食
-  if (/全家|萊爾富|7-11|711|全聯|便利|超市|餐廳|便當|飲料|咖啡|早餐|午餐|晚餐|小吃|麵包|飯|菜|水果|肉|蛋|牛奶|豆漿|點心|夜市|鹹酥|速食|麥當勞|肯德基|披薩|餐飲|食堂/.test(s)) return '食';
+  if (/全家|萊爾富|7-11|711|全聯|便利|超市|餐廳|便當|飲料|咖啡|早餐|午餐|晚餐|小吃|麵包|飯|菜|水果|肉|蛋|牛奶|豆漿|點心|夜市|鹹酥|速食|麥當勞|肯德基|披薩|餐飲|食堂|崇德發/.test(s)) return '食';
   return '其他';
 }
 
@@ -648,7 +652,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v37</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v38</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -807,8 +811,9 @@ function renderMain() {
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
     }
     const catMax = Math.max(...Object.values(catSum), 1);
-    // 六個分類永遠顯示（沒花費顯示 $0）；依已花費金額由多到少排序（同額時維持固定順序、0 元排最後）
-    const catOrder = [...EXPENSE_CATS].sort((a, b) => (catSum[b] || 0) - (catSum[a] || 0));
+    // 只顯示有花費的分類（0 元不顯示）；依已花費金額由多到少排序（同額時維持固定順序）
+    const catOrder = [...EXPENSE_CATS].filter(c => (catSum[c] || 0) > 0)
+                                     .sort((a, b) => (catSum[b] || 0) - (catSum[a] || 0));
     const catHtml = catOrder.map(c => {
       const v = catSum[c] || 0;
       const catItems = expItems.filter(it => (it.cat || expenseCat(it.store, it.text)) === c);
