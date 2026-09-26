@@ -166,6 +166,114 @@ main {
 .home-pos { color: #047857; }
 .home-neg { color: #dc2626; }
 
+/* 收支卡：摘要列 + 餅狀圖 + 最新消費 */
+.home-sum-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.home-sum {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-radius: 8px;
+  min-width: 0;
+}
+.home-sum-label {
+  font-size: 0.7rem;
+  color: var(--text2);
+}
+.home-sum b {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.home-sec-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text2);
+  margin: 10px 0 6px;
+}
+.pie-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pie-svg {
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+}
+.pie-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pie-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+.pie-legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.pie-empty {
+  font-size: 0.78rem;
+  color: var(--text2);
+  padding: 6px 0;
+}
+.home-latest {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.latest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.latest-item:last-child {
+  border-bottom: none;
+}
+.latest-store {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.latest-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.latest-amt {
+  font-weight: 600;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+.latest-date {
+  font-size: 0.68rem;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.latest-empty {
+  font-size: 0.78rem;
+  color: var(--text2);
+  padding: 4px 0;
+}
+
 /* 清單 */
 ul {
   list-style: none;

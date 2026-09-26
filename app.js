@@ -416,6 +416,9 @@ function extractItem(text, store) {
 // === 收支分類（食/衣/住/行/道場/其他）===
 const EXPENSE_CATS = ['食', '衣', '住', '行', '道場', '其他'];
 
+// 分類配色（餅狀圖 + 最新消費標籤用）
+const CAT_COLORS = { '食': '#f59e0b', '衣': '#8b5cf6', '住': '#10b981', '行': '#3b82f6', '道場': '#ef4444', '其他': '#9ca3af' };
+
 function expenseCat(store, text) {
   const s = (store + ' ' + (text || '')).toLowerCase();
   // 道場（優先）
@@ -500,6 +503,40 @@ function renderDailyChart(monthItems, maxDay) {
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
 }
 
+// 食衣住行等分類比例餅狀圖（SVG）
+function renderPieChart(catSum) {
+  const cats = EXPENSE_CATS.filter(c => (catSum[c] || 0) > 0);
+  const total = cats.reduce((s, c) => s + catSum[c], 0);
+  if (total <= 0) return '<div class="pie-empty">本月尚無支出</div>';
+  const cx = 55, cy = 55, r = 50;
+  let slices = '';
+  if (cats.length === 1) {
+    const c = cats[0];
+    slices = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${CAT_COLORS[c]}" stroke="#fff" stroke-width="1.5"><title>${c} NT$${catSum[c].toLocaleString()}（100%）</title></circle>`;
+  } else {
+    let angle = -Math.PI / 2;
+    for (const c of cats) {
+      const v = catSum[c];
+      const sweep = (v / total) * 2 * Math.PI;
+      const x1 = cx + r * Math.cos(angle);
+      const y1 = cy + r * Math.sin(angle);
+      const x2 = cx + r * Math.cos(angle + sweep);
+      const y2 = cy + r * Math.sin(angle + sweep);
+      const largeArc = sweep > Math.PI ? 1 : 0;
+      slices += `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${CAT_COLORS[c]}" stroke="#fff" stroke-width="1.5"><title>${c} NT$${v.toLocaleString()}（${Math.round(v/total*100)}%）</title></path>`;
+      angle += sweep;
+    }
+  }
+  const legend = cats.map(c => {
+    const v = catSum[c];
+    return `<span class="pie-legend-item"><i style="background:${CAT_COLORS[c]}"></i>${c} ${Math.round(v/total*100)}%</span>`;
+  }).join('');
+  return `<div class="pie-wrap">
+    <svg class="pie-svg" viewBox="0 0 110 110">${slices}</svg>
+    <div class="pie-legend">${legend}</div>
+  </div>`;
+}
+
 // === 渲染 ===
 function renderAll() {
   renderNav();
@@ -525,6 +562,27 @@ function renderHome() {
   const incTotal = MONTHLY_INCOME + incList.reduce((s, e) => s + (e.amount || 0), 0);
   const balance = incTotal - expTotal;
 
+  // 支出分類統計（含住固定）→ 餅狀圖用
+  const catSum = { '住': MONTHLY_HOUSING };
+  for (const it of expList) {
+    const c = it.cat || expenseCat(it.store, it.text);
+    catSum[c] = (catSum[c] || 0) + (it.amount || 0);
+  }
+
+  // 最新消費三筆（按日期降序）
+  const dateKey = d => { const p = String(d || '').split('/').map(Number); return (p[0] || 0) * 100 + (p[1] || 0); };
+  const latestExp = [...expList].sort((a, b) => dateKey(b.date) - dateKey(a.date)).slice(0, 3);
+  const latestHtml = latestExp.map(it => {
+    const store = (it.store && it.store !== '手動') ? it.store : (it.item || it.text || '');
+    const c = it.cat || expenseCat(it.store, it.text);
+    return `<div class="latest-item">
+      <span class="latest-store">${escHtml(store)}</span>
+      <span class="latest-badge" style="color:${CAT_COLORS[c] || '#9ca3af'}">${c}</span>
+      <span class="latest-amt">-NT$${(it.amount || 0).toLocaleString()}</span>
+      <span class="latest-date">${it.date || ''}</span>
+    </div>`;
+  }).join('');
+
   // 待辦
   const todos = getItems('todo');
   const pending = todos.filter(t => !t.completed).length;
@@ -543,9 +601,15 @@ function renderHome() {
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">
           <div class="home-card-title">💰 收支</div>
-          <div class="home-line">收入 <b>NT$${incTotal.toLocaleString()}</b></div>
-          <div class="home-line">支出 <b>NT$${expTotal.toLocaleString()}</b></div>
-          <div class="home-line">結餘 <b class="${balance >= 0 ? 'home-pos' : 'home-neg'}">${balance < 0 ? '-' : ''}NT$${Math.abs(balance).toLocaleString()}</b></div>
+          <div class="home-sum-row">
+            <div class="home-sum"><span class="home-sum-label">收入</span><b>NT$${incTotal.toLocaleString()}</b></div>
+            <div class="home-sum"><span class="home-sum-label">支出</span><b>NT$${expTotal.toLocaleString()}</b></div>
+            <div class="home-sum"><span class="home-sum-label">結餘</span><b class="${balance >= 0 ? 'home-pos' : 'home-neg'}">${balance < 0 ? '-' : ''}NT$${Math.abs(balance).toLocaleString()}</b></div>
+          </div>
+          <div class="home-sec-title">🍽️ 食衣住行比例</div>
+          ${renderPieChart(catSum)}
+          <div class="home-sec-title">🛒 最新消費</div>
+          <div class="home-latest">${latestHtml || '<div class="latest-empty">本月尚無消費</div>'}</div>
         </div>
         <div class="home-card" onclick="goTab('todo')">
           <div class="home-card-title">✓ 待辦</div>
