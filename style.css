@@ -39,10 +39,6 @@ header h1 {
   font-weight: 700;
   color: var(--accent2);
 }
-#syncStatus {
-  font-size: 0.75rem;
-  color: var(--text2);
-}
 
 /* 語音區 */
 #voiceSection {

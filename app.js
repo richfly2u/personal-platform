@@ -13,6 +13,7 @@ const BUILTIN_CATEGORIES = [
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
 const APP_VERSION = '20';
+const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) console.log('有新版本，請重新整理'); })
@@ -37,84 +38,10 @@ async function init() {
   await loadSyncData();
   renderAll();
   setupVoice();
-  setupSyncButton();
 }
 
-// === 同步按鈕（🔄）===
-const isLocalHost = location.hostname === '192.168.0.75';
-const SYNC_HOST = isLocalHost ? location.origin : 'https://192.168.0.75:9443';
-
-function setupSyncButton() {
-  const btn = document.getElementById('syncBtn');
-  const statusEl = document.getElementById('syncStatus');
-  if (!btn) return;
-
-  btn.addEventListener('click', async () => {
-    btn.textContent = '⏳';
-    statusEl.textContent = '同步中...';
-    try {
-      const resp = await fetch(`${SYNC_HOST}/sync`, {cache: 'no-store'});
-      const result = await resp.json();
-      if (result.ok) {
-        // 重新載入最新資料（本機伺服器上的最新 JSON）
-        await reloadSyncData();
-        statusEl.textContent = '✓ 已更新';
-      } else {
-        statusEl.textContent = '✗ 同步失敗';
-        console.warn('sync fail:', result);
-      }
-    } catch (e) {
-      statusEl.textContent = '需在家裡 WiFi';
-      // 非本機版：引導開本機版（同源 fetch 才不會被憑證擋）
-      if (!isLocalHost) {
-        setTimeout(() => {
-          if (confirm('同步需要連到家裡的本機伺服器（192.168.0.75）。\n要打開本機版嗎？')) {
-            window.open('https://192.168.0.75:9443', '_blank');
-          }
-        }, 500);
-      }
-    }
-    btn.textContent = '🔄';
-    setTimeout(() => { statusEl.textContent = ''; }, 4000);
-  });
-}
-
-// 從本機伺服器重新載入同步資料（GitHub Pages 版改抓本機，速度最快）
-async function reloadSyncData() {
-  try {
-    const invRes = await fetch(`${SYNC_HOST}/data/invoices.json`, {cache: 'no-store'});
-    if (invRes.ok) {
-      const invoices = await invRes.json();
-      const expenseItems = getItems('expense');
-      appData.items.expense = expenseItems.filter(e => e.source !== 'invoice');
-      for (const inv of invoices) {
-        appData.items.expense.push({
-          id: inv.id, store: inv.store || '未知', text: inv.item || '',
-          amount: inv.amount || 0, date: inv.date || '', source: 'invoice',
-          items: inv.items || []
-        });
-      }
-    }
-  } catch(e) {}
-
-  try {
-    const todoRes = await fetch(`${SYNC_HOST}/data/todos.json`, {cache: 'no-store'});
-    if (todoRes.ok) {
-      const todosData = await todoRes.json();
-      const todoItems = getItems('todo');
-      appData.items.todo = todoItems.filter(t => t.source !== 'easynote');
-      for (const item of todosData.items || []) {
-        appData.items.todo.push({
-          id: 'esynote_' + uid(), text: item.text,
-          completed: item.completed || false, date: today(), source: 'easynote'
-        });
-      }
-    }
-  } catch(e) {}
-
-  saveData();
-  renderAll();
-}
+// 本機伺服器（語音潤飾/待辦勾選/行事曆同步用）
+const SYNC_HOST = (location.hostname === '192.168.0.75') ? location.origin : 'https://192.168.0.75:9443';
 
 // === 資料讀寫 ===
 function loadData() {
@@ -218,7 +145,6 @@ async function loadSyncData() {
   } catch(e) {}
 
   saveData();
-  document.getElementById('syncStatus').textContent = '已同步';
 }
 
 // === 語音輸入 ===
@@ -572,7 +498,7 @@ function renderMain() {
     const expItems = monthItems.filter(it => (it.type || 'expense') !== 'income');
     const incItems = monthItems.filter(it => (it.type || 'expense') === 'income');
     const expTotal = expItems.reduce((s, e) => s + (e.amount || 0), 0);
-    const incTotal = incItems.reduce((s, e) => s + (e.amount || 0), 0);
+    const incTotal = MONTHLY_INCOME + incItems.reduce((s, e) => s + (e.amount || 0), 0);
     const balance = incTotal - expTotal;
 
     // 支出分類統計（食衣住行道場）
