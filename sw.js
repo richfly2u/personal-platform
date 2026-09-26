@@ -1,5 +1,5 @@
 /* === Service Worker === */
-const CACHE = 'personal-platform-v3';
+const CACHE = 'personal-platform-v4';
 const URLS = ['/', 'index.html', 'style.css', 'app.js', 'manifest.json'];
 
 self.addEventListener('install', e => {
