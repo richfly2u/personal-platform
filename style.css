@@ -127,6 +127,45 @@ main {
   color: var(--accent2);
 }
 
+/* 首頁（整合五項目摘要） */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.home-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  min-height: 88px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-card:active {
+  transform: scale(0.97);
+}
+.home-card-expense {
+  grid-column: span 2;
+}
+.home-card-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.home-line {
+  font-size: 0.82rem;
+  color: var(--text2);
+  line-height: 1.55;
+}
+.home-line b {
+  color: var(--text);
+}
+.home-pos { color: #047857; }
+.home-neg { color: #dc2626; }
+
 /* 清單 */
 ul {
   list-style: none;
@@ -617,11 +656,14 @@ nav {
   flex: 1;
   border: none;
   background: none;
-  padding: 8px 4px;
-  font-size: 0.78rem;
+  padding: 8px 2px;
+  font-size: 0.72rem;
   color: var(--text2);
   cursor: pointer;
   transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .nav-btn.active {
   color: var(--accent2);

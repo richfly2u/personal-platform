@@ -32,6 +32,7 @@ let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
+let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
 const DASH_URL = 'https://richfly2u.github.io/daily-dashboard/';
 
 // === 初始化 ===
@@ -466,30 +467,113 @@ function renderDailyChart(monthItems, maxDay) {
 // === 渲染 ===
 function renderAll() {
   renderNav();
-  renderMain();
+  if (homeOpen) {
+    renderHome();
+  } else if (!dashboardOpen) {
+    renderMain();
+  }
+}
+
+// 首頁：整合五項目重點摘要（收支/待辦/日記/靈感/養成好習慣）
+function renderHome() {
+  const main = document.getElementById('main');
+  const now = new Date();
+  const vMonth = now.getMonth() + 1;
+
+  // 收支本月摘要
+  const expAll = getItems('expense');
+  const monthItems = expAll.filter(it => monthOf(it.date) === vMonth);
+  const expList = monthItems.filter(it => (it.type || 'expense') !== 'income');
+  const incList = monthItems.filter(it => (it.type || 'expense') === 'income');
+  const expTotal = MONTHLY_HOUSING + expList.reduce((s, e) => s + (e.amount || 0), 0);
+  const incTotal = MONTHLY_INCOME + incList.reduce((s, e) => s + (e.amount || 0), 0);
+  const balance = incTotal - expTotal;
+
+  // 待辦
+  const todos = getItems('todo');
+  const pending = todos.filter(t => !t.completed).length;
+
+  // 日記（最近一篇）
+  const diaries = getItems('diary');
+  const lastDiary = diaries.length ? [...diaries].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] : null;
+
+  // 靈感（最近一則）
+  const ideas = getItems('idea');
+  const lastIdea = ideas.length ? [...ideas].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] : null;
+
+  main.innerHTML = `
+    <section class="tab-content active">
+      <h2>🏠 首頁</h2>
+      <div class="home-grid">
+        <div class="home-card home-card-expense" onclick="goTab('expense')">
+          <div class="home-card-title">💰 收支</div>
+          <div class="home-line">收入 <b>NT$${incTotal.toLocaleString()}</b></div>
+          <div class="home-line">支出 <b>NT$${expTotal.toLocaleString()}</b></div>
+          <div class="home-line">結餘 <b class="${balance >= 0 ? 'home-pos' : 'home-neg'}">${balance < 0 ? '-' : ''}NT$${Math.abs(balance).toLocaleString()}</b></div>
+        </div>
+        <div class="home-card" onclick="goTab('todo')">
+          <div class="home-card-title">✓ 待辦</div>
+          <div class="home-line">${pending ? `未完成 <b>${pending}</b> 筆` : '全部完成 🎉'}</div>
+        </div>
+        <div class="home-card" onclick="goTab('diary')">
+          <div class="home-card-title">📅 日記</div>
+          <div class="home-line">${lastDiary ? `${lastDiary.date} ${escHtml((lastDiary.text || '').slice(0, 14))}` : '尚無日記'}</div>
+        </div>
+        <div class="home-card" onclick="goTab('idea')">
+          <div class="home-card-title">💡 靈感</div>
+          <div class="home-line">${lastIdea ? escHtml((lastIdea.text || '').slice(0, 14)) : '尚無靈感'}</div>
+        </div>
+        <div class="home-card" onclick="goDashboard()">
+          <div class="home-card-title">📊 養成好習慣</div>
+          <div class="home-line">進入每日行動儀表板</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+// 首頁點卡片 → 跳到對應分類
+function goTab(tabId) {
+  homeOpen = false;
+  hideDashboard();
+  currentTab = tabId;
+  editingId = null;
+  renderAll();
+}
+
+// 回首頁
+function goHome() {
+  homeOpen = true;
+  hideDashboard();
+  renderAll();
+}
+
+// 首頁點「養成好習慣」→ 開儀表板
+function goDashboard() {
+  homeOpen = false;
+  showDashboard();
 }
 
 function renderNav() {
   const nav = document.getElementById('nav');
   nav.innerHTML =
+    `<button class="nav-btn home-btn ${homeOpen?'active':''}" id="homeBtn" title="回首頁">🏠</button>` +
     appData.categories.map(c => `
-    <button class="nav-btn ${(c.id===currentTab && !dashboardOpen)?'active':''}" data-tab="${c.id}">
+    <button class="nav-btn ${(c.id===currentTab && !dashboardOpen && !homeOpen)?'active':''}" data-tab="${c.id}">
       ${c.icon} ${c.name.replace('事項','')}
     </button>
   `).join('') + `
     <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
     <button class="nav-btn dash-btn ${dashboardOpen?'active':''}" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 養成好習慣</button>`;
 
+  const homeBtn = document.getElementById('homeBtn');
+  if (homeBtn) homeBtn.addEventListener('click', goHome);
+
   nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      hideDashboard();
-      currentTab = btn.dataset.tab;
-      editingId = null;
-      renderAll();
-    });
+    btn.addEventListener('click', () => goTab(btn.dataset.tab));
   });
 
   nav.querySelector('.add-cat-btn').addEventListener('click', () => {
+    homeOpen = false;
     hideDashboard();
     addCategory();
   });
@@ -511,6 +595,7 @@ function renderNav() {
 // 養成好習慣 iframe 內嵌（保留底部導航）
 function showDashboard() {
   dashboardOpen = true;
+  homeOpen = false;
   const frame = document.getElementById('dashFrame');
   const iframe = document.getElementById('dashIframe');
   if (frame) frame.classList.remove('hidden');
