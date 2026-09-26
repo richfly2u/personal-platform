@@ -35,6 +35,7 @@ let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
 const DASH_URL = 'https://richfly2u.github.io/daily-dashboard/';
 let voiceSupported = false;  // 瀏覽器是否支援語音辨識（決定是否顯示麥克風按鈕）
+const NAV_KEY = 'personal_platform_nav';  // 目前頁面狀態（重整後維持）
 
 // === 初始化 ===
 async function init() {
@@ -42,7 +43,29 @@ async function init() {
   migrateOldData();
   await loadSyncData();
   setupVoice();
-  renderAll();
+  restoreNav();  // 重整後回到上次的頁面
+  if (dashboardOpen) {
+    showDashboard();
+  } else {
+    renderAll();
+  }
+}
+
+// === 導航狀態讀寫（重整後維持目前頁面）===
+function saveNav() {
+  try {
+    localStorage.setItem(NAV_KEY, JSON.stringify({ currentTab, homeOpen, dashboardOpen }));
+  } catch(e) {}
+}
+function restoreNav() {
+  try {
+    const s = JSON.parse(localStorage.getItem(NAV_KEY) || 'null');
+    if (s) {
+      if (typeof s.currentTab === 'string') currentTab = s.currentTab;
+      homeOpen = !!s.homeOpen;
+      dashboardOpen = !!s.dashboardOpen;
+    }
+  } catch(e) {}
 }
 
 // 本機伺服器（語音潤飾/待辦勾選/行事曆同步用）
@@ -525,6 +548,7 @@ function renderAll() {
   } else if (!dashboardOpen) {
     renderMain();
   }
+  saveNav();
 }
 
 // 首頁：整合五項目重點摘要（收支/待辦/日記/靈感/養成好習慣）
@@ -577,7 +601,14 @@ function renderHome() {
 
   main.innerHTML = `
     <section class="tab-content active">
-      <h2>🏠 首頁</h2>
+      <div class="home-top">
+        <h2>🏠 首頁</h2>
+        <div class="home-links">
+          <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
+          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
+          <a class="home-link" href="https://www.google.com/maps?q=%E5%87%B1%E5%BE%B7%E8%81%96%E9%81%93%E9%99%A2" target="_blank" rel="noopener">🛕凱德</a>
+        </div>
+      </div>
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">
           <div class="home-card-title">💰 ${vMonth}月收支</div>
@@ -606,14 +637,6 @@ function renderHome() {
         <div class="home-card" onclick="goDashboard()">
           <div class="home-card-title">📊 養成好習慣</div>
           <div class="home-line">進入每日行動儀表板</div>
-        </div>
-      </div>
-      <div class="home-links">
-        <div class="home-sec-title">🔗 常用連結</div>
-        <div class="home-link-row">
-          <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener"><span class="home-link-ico">🍱</span><span>便當組合</span></a>
-          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener"><span class="home-link-ico">🏢</span><span>凱鴻</span></a>
-          <a class="home-link" href="https://www.google.com/maps?q=%E5%87%B1%E5%BE%B7%E8%81%96%E9%81%93%E9%99%A2" target="_blank" rel="noopener"><span class="home-link-ico">🛕</span><span>凱德</span></a>
         </div>
       </div>
     </section>`;
@@ -688,6 +711,7 @@ function showDashboard() {
   if (iframe && iframe.getAttribute('src') !== DASH_URL) iframe.setAttribute('src', DASH_URL);
   document.getElementById('main').style.display = 'none';
   renderNav();
+  saveNav();
 }
 
 function hideDashboard() {
