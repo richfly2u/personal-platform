@@ -42,6 +42,7 @@ async function init() {
   await loadSyncData();
   renderAll();
   setupVoice();
+  setupTodoWidget();
 }
 
 // 本機伺服器（語音潤飾/待辦勾選/行事曆同步用）
@@ -323,6 +324,62 @@ function setupVoice() {
   });
 }
 
+// === 透明浮動待辦小工具 ===
+function setupTodoWidget() {
+  const btn = document.getElementById('todoWidgetBtn');
+  const panel = document.getElementById('todoWidgetPanel');
+  const closeBtn = document.getElementById('todoWidgetClose');
+  const input = document.getElementById('todoWidgetInput');
+  const addBtn = document.getElementById('todoWidgetAdd');
+  const list = document.getElementById('todoWidgetList');
+
+  btn.addEventListener('click', () => {
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) {
+      renderTodoWidget();
+      input.focus();
+    }
+  });
+  closeBtn.addEventListener('click', () => panel.classList.add('hidden'));
+
+  function addTodo() {
+    const text = input.value.trim();
+    if (!text) return;
+    getItems('todo').unshift({ id: uid(), text, date: today(), completed: false, source: 'widget' });
+    input.value = '';
+    saveData();
+    renderAll();
+  }
+  addBtn.addEventListener('click', addTodo);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+  // 勾選完成（事件委派）
+  list.addEventListener('click', e => {
+    const el = e.target.closest('.tw-check');
+    if (!el) return;
+    const it = getItems('todo').find(i => i.id === el.dataset.id);
+    if (!it) return;
+    it.completed = true;
+    saveData();
+    renderAll();
+  });
+}
+
+function renderTodoWidget() {
+  const list = document.getElementById('todoWidgetList');
+  if (!list) return;
+  const todos = getItems('todo').filter(t => !t.completed);
+  if (todos.length === 0) {
+    list.innerHTML = '<li class="tw-empty">沒有待辦，快新增一個 🎉</li>';
+    return;
+  }
+  list.innerHTML = todos.map(t => `
+    <li class="tw-item">
+      <span class="tw-check" data-id="${t.id}">○</span>
+      <span class="tw-text">${escHtml(t.text)}</span>
+    </li>`).join('');
+}
+
 // 日記語音潤稿：DeepSeek 加標點 + 潤飾（需在家連本機伺服器）
 async function polishText(text) {
   try {
@@ -534,11 +591,15 @@ function renderAll() {
   // 語音按鈕只在內容頁顯示（首頁/養成好習慣不適用）
   const voiceBtn = document.getElementById('voiceBtn');
   if (voiceBtn) voiceBtn.style.display = (homeOpen || dashboardOpen) ? 'none' : '';
+  // 待辦小工具只在非儀表板顯示（首頁+內容頁皆可）
+  const todoWidget = document.getElementById('todoWidget');
+  if (todoWidget) todoWidget.style.display = dashboardOpen ? 'none' : '';
   if (homeOpen) {
     renderHome();
   } else if (!dashboardOpen) {
     renderMain();
   }
+  renderTodoWidget();
 }
 
 // 首頁：整合五項目重點摘要（收支/待辦/日記/靈感/養成好習慣）
