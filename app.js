@@ -84,6 +84,8 @@ function restoreNav() {
     const s = JSON.parse(localStorage.getItem(NAV_KEY) || 'null');
     if (s) {
       if (typeof s.currentTab === 'string') currentTab = s.currentTab;
+      // 若存的頁面已不存在（如已撤銷的便利貼 sticky）→ 退回第一個類別
+      if (!appData.categories.some(c => c.id === currentTab)) currentTab = (appData.categories[0] || {}).id || 'todo';
       homeOpen = !!s.homeOpen;
       dashboardOpen = !!s.dashboardOpen;
     }
@@ -99,8 +101,9 @@ function loadData() {
   if (raw) {
     try {
       const saved = JSON.parse(raw);
-      if (saved.categories) appData.categories = saved.categories;
-      if (saved.items) appData.items = saved.items;
+      // 移除已刪除的「便利貼 sticky」分類（v23 撤銷，但舊 localStorage 仍殘留 sticky 分類→導航還看得到便利貼）
+      if (saved.categories) appData.categories = saved.categories.filter(c => c.id !== 'sticky');
+      if (saved.items) { appData.items = saved.items; delete appData.items.sticky; }
     } catch(e) {}
   }
 }
@@ -645,7 +648,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來</h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v36</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>

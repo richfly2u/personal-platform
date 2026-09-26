@@ -22,22 +22,9 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
+  padding-top: 16px;
   padding-bottom: 80px;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* 頂部 */
-header {
-  padding: 16px 20px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
-header h1 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--accent2);
 }
 
 /* 語音區 */
