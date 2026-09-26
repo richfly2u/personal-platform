@@ -131,22 +131,27 @@ async function loadSyncData() {
   } catch(e) {}
 
   try {
+    // easynote 待辦只匯入一次，避免使用者刪除後每次重整又被加回來
     const todoRes = await fetch('data/todos.json');
-    if (todoRes.ok) {
+    if (todoRes.ok && !localStorage.getItem('easynote_imported')) {
       const todosData = await todoRes.json();
       const todoItems = getItems('todo');
-      const existingTexts = new Set(todoItems.filter(t=>t.source==='easynote').map(t=>t.text));
-      for (const item of todosData.items || []) {
-        if (!existingTexts.has(item.text)) {
-          todoItems.push({
-            id: 'esynote_'+uid(),
-            text: item.text,
-            completed: item.completed || false,
-            date: today(),
-            source: 'easynote'
-          });
+      const hasEasynote = todoItems.some(t => t.source === 'easynote');
+      if (!hasEasynote) {
+        const existingTexts = new Set(todoItems.map(t => t.text));
+        for (const item of todosData.items || []) {
+          if (!existingTexts.has(item.text)) {
+            todoItems.push({
+              id: 'esynote_' + uid(),
+              text: item.text,
+              completed: item.completed || false,
+              date: today(),
+              source: 'easynote'
+            });
+          }
         }
       }
+      localStorage.setItem('easynote_imported', '1');
     }
   } catch(e) {}
 
