@@ -648,7 +648,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v36</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v37</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -807,8 +807,9 @@ function renderMain() {
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
     }
     const catMax = Math.max(...Object.values(catSum), 1);
-    // 六個分類永遠顯示（沒花費顯示 $0）；每個分類下方有 toggle 顯示該分類明細
-    const catHtml = EXPENSE_CATS.map(c => {
+    // 六個分類永遠顯示（沒花費顯示 $0）；依已花費金額由多到少排序（同額時維持固定順序、0 元排最後）
+    const catOrder = [...EXPENSE_CATS].sort((a, b) => (catSum[b] || 0) - (catSum[a] || 0));
+    const catHtml = catOrder.map(c => {
       const v = catSum[c] || 0;
       const catItems = expItems.filter(it => (it.cat || expenseCat(it.store, it.text)) === c);
       let detailHtml = '';
