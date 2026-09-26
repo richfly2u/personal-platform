@@ -296,6 +296,11 @@ li, .card {
   text-decoration: line-through;
   color: var(--text2);
 }
+.todo-marker {
+  color: var(--accent);
+  margin-right: 6px;
+  font-weight: 700;
+}
 .card .meta {
   font-size: 0.75rem;
   color: var(--text2);

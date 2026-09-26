@@ -666,7 +666,7 @@ function renderHome() {
         <div class="home-card" onclick="goTab('todo')">
           <div class="home-card-title">✓ 待辦</div>
           ${topTodos.length
-            ? topTodos.map(t => `<div class="home-line">${escHtml((t.text || '').slice(0, 16))}</div>`).join('')
+            ? topTodos.map(t => `<div class="home-line"><span class="todo-marker">▸</span>${escHtml((t.text || '').slice(0, 16))}</div>`).join('')
               + (pendingTodos.length > 3 ? `<div class="home-line home-line-more">另有 ${pendingTodos.length - 3} 筆未完成</div>` : '')
             : '<div class="home-line">全部完成 🎉</div>'}
         </div>
@@ -1014,7 +1014,7 @@ function renderItem(cat, it) {
     return `
       <li>
         <span class="todo-check ${it.completed?'done':''}" data-id="${it.id}">✓</span>
-        <span class="todo-text ${it.completed?'done':''}" style="flex:1">${escHtml(it.text)}</span>
+        <span class="todo-text ${it.completed?'done':''}" style="flex:1"><span class="todo-marker">▸</span>${escHtml(it.text)}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>
