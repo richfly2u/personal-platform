@@ -14,6 +14,7 @@ const BUILTIN_CATEGORIES = [
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
 const APP_VERSION = '20';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
+const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
   .then(r => r.text())
   .then(t => { if (t.trim() && t.trim() !== APP_VERSION) console.log('有新版本，請重新整理'); })
@@ -497,12 +498,12 @@ function renderMain() {
     // 收入/支出分開
     const expItems = monthItems.filter(it => (it.type || 'expense') !== 'income');
     const incItems = monthItems.filter(it => (it.type || 'expense') === 'income');
-    const expTotal = expItems.reduce((s, e) => s + (e.amount || 0), 0);
+    const expTotal = MONTHLY_HOUSING + expItems.reduce((s, e) => s + (e.amount || 0), 0);
     const incTotal = MONTHLY_INCOME + incItems.reduce((s, e) => s + (e.amount || 0), 0);
     const balance = incTotal - expTotal;
 
-    // 支出分類統計（食衣住行道場）
-    const catSum = {};
+    // 支出分類統計（食衣住行道場）；住固定 MONTHLY_HOUSING
+    const catSum = { '住': MONTHLY_HOUSING };
     for (const it of expItems) {
       const c = it.cat || expenseCat(it.store, it.text);
       catSum[c] = (catSum[c] || 0) + (it.amount || 0);
