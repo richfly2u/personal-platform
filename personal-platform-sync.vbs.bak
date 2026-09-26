@@ -1,3 +1,0 @@
-Set WshShell = CreateObject("WScript.Shell")
-WshShell.CurrentDirectory = "C:\Users\alan\personal-platform"
-WshShell.Run "cmd /c start_server.bat", 0, False
