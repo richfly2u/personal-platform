@@ -229,8 +229,9 @@ function setupVoice() {
   voiceSupported = true;
 
   let recognition = null;
-  let finalText = '';
-  let finalCount = 0;  // 已累積的最終結果數（防重複輸出）
+  let committed = '';     // 已確認文字（起點＝輸入框原有內容）
+  let finalCount = 0;     // 本辨識工作階段已累積的最終結果數（防同一段重複）
+  let inputRef = null;    // 本工作階段的輸入框節點（被重繪＝已存入/換頁 → 丟棄遲到結果）
   let stoppedByUser = false;
   let silenceTimer = null;
   const SILENCE_MS = 3000;  // 斷音超過 3 秒自動停止
@@ -238,10 +239,23 @@ function setupVoice() {
   function micBtn() { return document.getElementById('micBtn'); }
   function addInput() { return document.getElementById('addText'); }
 
-  // 語音文字直接寫進輸入框（即時）
-  function setInput(text) {
+  // 接上新片段並去掉與尾端重疊的部分
+  // （Chrome 續聽開新 session 時，會把上一段的尾句當成新的最終結果重送 → 不去重就會重複出現）
+  function appendSegment(base, seg) {
+    if (!seg) return base;
+    if (!base) return seg;
+    if (base.endsWith(seg)) return base;                // 整段重複
+    const max = Math.min(base.length, seg.length);
+    for (let k = max; k > 0; k--) {                     // 找最大重疊長度
+      if (base.slice(-k) === seg.slice(0, k)) return base + seg.slice(k);
+    }
+    return base + seg;
+  }
+
+  // 把「已確認文字 + 即時辨識中」寫進輸入框（即時文字每輪重算，不累積）
+  function renderInput(interim) {
     const inp = addInput();
-    if (inp) { inp.value = text; autoGrowInput(inp); }
+    if (inp) { inp.value = appendSegment(committed, interim || ''); autoGrowInput(inp); }
   }
   // 錯誤訊息：暫時顯示在輸入框 placeholder
   function showInputError(msg) {
@@ -302,7 +316,9 @@ function setupVoice() {
     recognition.lang = 'zh-TW';
     recognition.interimResults = true;
     recognition.continuous = true;   // 連續辨識：整段話都能辨識，不因短暫停頓就中斷
-    finalCount = 0;  // 新辨識工作階段，最終結果計數歸零
+    finalCount = 0;                  // 新辨識工作階段，最終結果計數歸零
+    inputRef = addInput();           // 記住本工作階段的輸入框節點
+    committed = inputRef ? inputRef.value : '';  // 從輸入框現有內容接續（續聽時也接得上）
 
     // 偵測辨識是否真的啟動（無後端的瀏覽器會靜默卡住不觸發任何事件）
     let started = false;
@@ -318,20 +334,23 @@ function setupVoice() {
     recognition.onstart = () => { started = true; clearTimeout(stallTimer); resetSilenceTimer(); };
 
     recognition.onresult = (event) => {
+      const inp = addInput();
+      // 輸入框已被重繪（＝已自動存入或換頁）→ 這是遲到的舊結果，丟棄不再寫入
+      if (!inp || (inputRef && inp !== inputRef)) return;
       let interim = '';
       for (let i = 0; i < event.results.length; i++) {
         const r = event.results[i];
         if (r.isFinal) {
           // 只累積「新的」最終結果（i >= finalCount），避免 Chrome 重複回報同一段
           if (i >= finalCount) {
-            finalText += r[0].transcript;
+            committed = appendSegment(committed, r[0].transcript);
             finalCount = i + 1;
           }
         } else if (i >= finalCount) {
           interim += r[0].transcript;
         }
       }
-      setInput(finalText + interim);  // 直接寫進輸入框
+      renderInput(interim);  // 直接寫進輸入框
       resetSilenceTimer();  // 有說話 → 重置斷音計時
     };
 
@@ -367,9 +386,7 @@ function setupVoice() {
       return;
     }
     if (b.classList.contains('listening')) return;
-    // 接續輸入框已有的文字（語音追加）
-    finalText = addInput() ? addInput().value : '';
-    startListening();
+    startListening();   // 接續輸入框已打好的文字：beginRecognition 會以輸入框現值為起點
   });
 
   // 螢幕觸碰／輸入 → 重設自動存入計時（前賢在確認/編輯時不自動存）
@@ -659,7 +676,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v41</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v42</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
