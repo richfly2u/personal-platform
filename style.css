@@ -92,6 +92,18 @@ main {
   font-weight: 700;
   margin-bottom: 6px;
   color: var(--text);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* 首頁「X月收支」右邊的今日日期 */
+.home-today {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text2);
+  opacity: 0.9;
+  white-space: nowrap;
 }
 .home-line {
   font-size: 0.82rem;

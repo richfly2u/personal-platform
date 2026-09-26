@@ -831,7 +831,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v53</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v54</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -840,7 +840,7 @@ function renderHome() {
       </div>
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">
-          <div class="home-card-title">💰 ${vMonth}月收支</div>
+          <div class="home-card-title"><span>💰 ${vMonth}月收支</span><span class="home-today">今日日期 ${vMonth}月${now.getDate()}日</span></div>
           <div class="home-sum-row">
             <div class="home-sum"><span class="home-sum-label">收入</span><b>NT$${incTotal.toLocaleString()}</b></div>
             <div class="home-sum"><span class="home-sum-label">支出</span><b>NT$${expTotal.toLocaleString()}</b></div>
