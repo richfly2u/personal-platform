@@ -167,11 +167,6 @@ async function loadSyncData() {
 
 // === 語音輸入 ===
 function setupVoice() {
-  const resultDiv = document.getElementById('voiceResult');
-  const voiceText = document.getElementById('voiceText');
-  const saveBtn = document.getElementById('saveVoice');
-  const cancelBtn = document.getElementById('cancelVoice');
-
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     voiceSupported = false;
@@ -186,14 +181,23 @@ function setupVoice() {
   const SILENCE_MS = 3000;  // 斷音超過 3 秒自動停止
 
   function micBtn() { return document.getElementById('micBtn'); }
+  function addInput() { return document.getElementById('addText'); }
+
+  // 語音文字直接寫進輸入框（即時）
+  function setInput(text) {
+    const inp = addInput();
+    if (inp) inp.value = text;
+  }
+  // 錯誤訊息：暫時顯示在輸入框 placeholder
+  function showInputError(msg) {
+    const inp = addInput();
+    if (inp) inp.placeholder = msg;
+  }
 
   function stopListening() {
     const b = micBtn();
     if (b) { b.classList.remove('listening'); b.textContent = '🎤'; }
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
-    if (finalText.trim()) {
-      voiceText.textContent = finalText.trim();
-    }
   }
 
   // 斷音計時：有收到語音就重置，超過 SILENCE_MS 沒聲音則自動停止
@@ -206,8 +210,7 @@ function setupVoice() {
     }, SILENCE_MS);
   }
 
-  // 先確認麥克風權限（Chrome 首次點擊會跳權限提示，未授權前 onstart 不會觸發，
-  // 導致原本 3 秒偵測誤判「不支援」）
+  // 先確認麥克風權限（Chrome 首次點擊會跳權限提示，未授權前 onstart 不會觸發）
   async function ensureMicPermission() {
     try {
       if (navigator.permissions && navigator.permissions.query) {
@@ -215,8 +218,6 @@ function setupVoice() {
         if (st.state === 'granted') return true;
         if (st.state === 'denied') return false;
       }
-      // prompt 狀態：用 getUserMedia 觸發權限提示
-      voiceText.textContent = '請允許麥克風權限…';
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
       return true;
@@ -229,14 +230,11 @@ function setupVoice() {
     stoppedByUser = false;
     const b = micBtn();
     if (b) { b.classList.add('listening'); b.textContent = '🔴'; }
-    voiceText.style.color = '';
-    resultDiv.classList.remove('hidden');
 
     ensureMicPermission().then(granted => {
       if (!granted) {
         stopListening();
-        voiceText.style.color = 'var(--danger)';
-        voiceText.textContent = '未允許麥克風權限，無法語音輸入（可點網址列左側 🔒 重新開啟）';
+        showInputError('未允許麥克風權限，請點網址列左側 🔒 允許後重試');
         return;
       }
       beginRecognition();
@@ -249,9 +247,6 @@ function setupVoice() {
     recognition.interimResults = true;
     recognition.continuous = true;   // 連續辨識：整段話都能辨識，不因短暫停頓就中斷
 
-    voiceText.style.color = '';
-    voiceText.textContent = finalText ? finalText : '請說話…';
-
     // 偵測辨識是否真的啟動（無後端的瀏覽器會靜默卡住不觸發任何事件）
     let started = false;
     const stallTimer = setTimeout(() => {
@@ -259,9 +254,7 @@ function setupVoice() {
         stoppedByUser = true;
         try { recognition.stop(); } catch(e) {}
         stopListening();
-        voiceText.textContent = '語音辨識無法啟動，請確認已連網後重試';
-        voiceText.style.color = 'var(--danger)';
-        resultDiv.classList.remove('hidden');
+        showInputError('語音辨識無法啟動，請確認已連網後重試');
       }
     }, 8000);
 
@@ -277,9 +270,7 @@ function setupVoice() {
           interim += r[0].transcript;
         }
       }
-      voiceText.style.color = '';
-      voiceText.textContent = finalText + interim;
-      resultDiv.classList.remove('hidden');
+      setInput(finalText + interim);  // 直接寫進輸入框
       resetSilenceTimer();  // 有說話 → 重置斷音計時
     };
 
@@ -287,11 +278,9 @@ function setupVoice() {
       clearTimeout(stallTimer);
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
         stopListening();
-        voiceText.style.color = 'var(--danger)';
-        voiceText.textContent = e.error === 'not-allowed'
+        showInputError(e.error === 'not-allowed'
           ? '請允許麥克風權限後再試'
-          : '語音辨識失敗（' + e.error + '），請確認網路後重試';
-        resultDiv.classList.remove('hidden');
+          : '語音辨識失敗（' + e.error + '）');
       }
     };
 
@@ -317,44 +306,9 @@ function setupVoice() {
       return;
     }
     if (b.classList.contains('listening')) return;
-    finalText = '';
+    // 接續輸入框已有的文字（語音追加）
+    finalText = addInput() ? addInput().value : '';
     startListening();
-  });
-
-  saveBtn.addEventListener('click', async () => {
-    let text = voiceText.textContent.trim();
-    const catId = currentTab;
-    if (!text) return;
-
-    // 日記：先潤稿（加標點 + 潤飾）
-    if (catId === 'diary') {
-      saveBtn.textContent = '潤稿中...';
-      saveBtn.disabled = true;
-      const polished = await polishText(text);
-      text = polished || localPolish(text);
-      saveBtn.textContent = '儲存';
-      saveBtn.disabled = false;
-    }
-
-    if (catId === 'expense') {
-      const amt = parseAmount(text);
-      addExpense(text, amt);
-    } else {
-      getItems(catId).unshift({
-        id: uid(), text,
-        date: catId === 'diary' ? nowStamp() : today(),
-        source: 'voice', completed: false
-      });
-    }
-    saveData();
-    renderAll();
-    resultDiv.classList.add('hidden');
-    voiceText.textContent = '';
-  });
-
-  cancelBtn.addEventListener('click', () => {
-    resultDiv.classList.add('hidden');
-    voiceText.textContent = '';
   });
 }
 
@@ -566,9 +520,6 @@ function renderPieChart(catSum) {
 // === 渲染 ===
 function renderAll() {
   renderNav();
-  // 語音結果浮動列：首頁/養成好習慣時隱藏（內容頁不強制，交由語音流程控制）
-  const voiceResult = document.getElementById('voiceResult');
-  if (voiceResult && (homeOpen || dashboardOpen)) voiceResult.classList.add('hidden');
   if (homeOpen) {
     renderHome();
   } else if (!dashboardOpen) {
@@ -657,6 +608,14 @@ function renderHome() {
           <div class="home-line">進入每日行動儀表板</div>
         </div>
       </div>
+      <div class="home-links">
+        <div class="home-sec-title">🔗 常用連結</div>
+        <div class="home-link-row">
+          <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener"><span class="home-link-ico">🍱</span><span>便當組合</span></a>
+          <a class="home-link" href="https://kindhome.net/" target="_blank" rel="noopener"><span class="home-link-ico">🏢</span><span>凱鴻</span></a>
+          <a class="home-link" href="https://www.google.com/maps?q=%E5%87%B1%E5%BE%B7%E8%81%96%E9%81%93%E9%99%A2" target="_blank" rel="noopener"><span class="home-link-ico">🛕</span><span>凱德</span></a>
+        </div>
+      </div>
     </section>`;
 }
 
@@ -728,8 +687,6 @@ function showDashboard() {
   if (frame) frame.classList.remove('hidden');
   if (iframe && iframe.getAttribute('src') !== DASH_URL) iframe.setAttribute('src', DASH_URL);
   document.getElementById('main').style.display = 'none';
-  const vr = document.getElementById('voiceResult');
-  if (vr) vr.classList.add('hidden');
   renderNav();
 }
 
