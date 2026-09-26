@@ -8,13 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>個人平台</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 
 <!-- 頂部 -->
 <header>
-  <h1>個人平台 <small style="font-size:.7rem;color:var(--text2);font-weight:400" id="verTag">v25</small></h1>
+  <h1>個人平台 <small style="font-size:.7rem;color:var(--text2);font-weight:400" id="verTag">v26</small></h1>
 </header>
 
 <!-- 語音辨識結果（浮動列，貼齊底部導航上方） -->
@@ -29,22 +29,6 @@
 <!-- 主要內容區（JS 動態產生） -->
 <main id="main"></main>
 
-<!-- 透明浮動待辦小工具 -->
-<div id="todoWidget">
-  <button id="todoWidgetBtn" title="待辦小工具">📝</button>
-  <div id="todoWidgetPanel" class="hidden">
-    <div class="tw-head">
-      <span class="tw-title">待辦事項</span>
-      <button id="todoWidgetClose">✕</button>
-    </div>
-    <div class="tw-add">
-      <input id="todoWidgetInput" placeholder="快速新增待辦..." maxlength="100">
-      <button id="todoWidgetAdd">＋</button>
-    </div>
-    <ul id="todoWidgetList"></ul>
-  </div>
-</div>
-
 <!-- 養成好習慣（iframe 內嵌，保留底部導航） -->
 <div id="dashFrame" class="hidden">
   <iframe id="dashIframe" title="養成好習慣" allow="clipboard-write"></iframe>
@@ -53,6 +37,6 @@
 <!-- 底部導航（JS 動態產生） -->
 <nav id="nav"></nav>
 
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
