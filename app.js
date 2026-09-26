@@ -31,6 +31,8 @@ let appData = {
 let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
+let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
+const DASH_URL = 'https://richfly2u.github.io/daily-dashboard/';
 
 // === 初始化 ===
 async function init() {
@@ -449,36 +451,59 @@ function renderNav() {
   const nav = document.getElementById('nav');
   nav.innerHTML =
     appData.categories.map(c => `
-    <button class="nav-btn ${c.id===currentTab?'active':''}" data-tab="${c.id}">
+    <button class="nav-btn ${(c.id===currentTab && !dashboardOpen)?'active':''}" data-tab="${c.id}">
       ${c.icon} ${c.name.replace('事項','')}
     </button>
   `).join('') + `
     <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
-    <button class="nav-btn dash-btn" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 養成好習慣</button>`;
+    <button class="nav-btn dash-btn ${dashboardOpen?'active':''}" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 養成好習慣</button>`;
 
   nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
+      hideDashboard();
       currentTab = btn.dataset.tab;
       editingId = null;
       renderAll();
     });
   });
 
-  nav.querySelector('.add-cat-btn').addEventListener('click', addCategory);
+  nav.querySelector('.add-cat-btn').addEventListener('click', () => {
+    hideDashboard();
+    addCategory();
+  });
 
-  // 儀表板切換：在 iframe 內→關閉上層遮罩；獨立開→直接跳轉
+  // 養成好習慣：iframe 內嵌顯示，保留底部導航
   const dashBtn = document.getElementById('dashBtn');
   if (dashBtn) {
     dashBtn.addEventListener('click', () => {
-      if (window.self !== window.top) {
-        try {
-          window.top.document.getElementById('ppOverlay').style.display = 'none';
-          return;
-        } catch(e) {}
+      if (dashboardOpen) {
+        hideDashboard();
+        renderNav();
+      } else {
+        showDashboard();
       }
-      window.location.href = 'https://richfly2u.github.io/daily-dashboard/';
     });
   }
+}
+
+// 養成好習慣 iframe 內嵌（保留底部導航）
+function showDashboard() {
+  dashboardOpen = true;
+  const frame = document.getElementById('dashFrame');
+  const iframe = document.getElementById('dashIframe');
+  if (frame) frame.classList.remove('hidden');
+  if (iframe && iframe.getAttribute('src') !== DASH_URL) iframe.setAttribute('src', DASH_URL);
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('voiceSection').style.display = 'none';
+  renderNav();
+}
+
+function hideDashboard() {
+  dashboardOpen = false;
+  const frame = document.getElementById('dashFrame');
+  if (frame) frame.classList.add('hidden');
+  document.getElementById('main').style.display = '';
+  document.getElementById('voiceSection').style.display = '';
 }
 
 function renderMain() {

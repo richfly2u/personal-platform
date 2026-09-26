@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>個人平台</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -34,9 +34,14 @@
 <!-- 主要內容區（JS 動態產生） -->
 <main id="main"></main>
 
+<!-- 養成好習慣（iframe 內嵌，保留底部導航） -->
+<div id="dashFrame" class="hidden">
+  <iframe id="dashIframe" title="養成好習慣" allow="clipboard-write"></iframe>
+</div>
+
 <!-- 底部導航（JS 動態產生） -->
 <nav id="nav"></nav>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
