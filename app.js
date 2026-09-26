@@ -662,6 +662,57 @@ function renderAll() {
 }
 
 // 首頁：整合五項目重點摘要（收支/待辦/日記/靈感/養成好習慣）
+// === 養成好習慣（daily-dashboard）每日數字 ===
+// 兩支 app 同網域(richfly2u.github.io) → 共用 localStorage 的 dashboard_key（板名）
+// 直接讀 Firestore（公開讀取），數字算法與儀表板完全一致
+const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/bentodish-alan/databases/(default)/documents/dashboard/';
+const FIRESTORE_KEY = 'AIzaSyCRazQsleeT4H4Nt6VrqI1KGlfVenc';
+let habitCache = { t: 0, data: null };
+
+async function fetchHabitStats() {
+  if (habitCache.data && Date.now() - habitCache.t < 60000) return habitCache.data;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    let board = 'alan';
+    try { board = localStorage.getItem('dashboard_key') || 'alan'; } catch (e) {}
+    const resp = await fetch(`${FIRESTORE_BASE}${encodeURIComponent(board)}?key=${FIRESTORE_KEY}`, { signal: ctl.signal });
+    if (!resp.ok) return null;
+    const doc = await resp.json();
+    const fields = doc.fields || {};
+    const dayKey = new Date().toISOString().slice(0, 10);   // 與儀表板一致：UTC 日期
+    const grab = v => (v && v.arrayValue && v.arrayValue.values) ? v.arrayValue.values : [];
+    const dayField = fields[dayKey] && fields[dayKey].mapValue && fields[dayKey].mapValue.fields;
+    const dayItems = dayField ? grab(dayField.items) : [];
+    const items = dayItems.length ? dayItems : grab(fields._itemsTemplate);
+    const total = items.length;
+    let done = 0;
+    for (const it of items) {
+      const f = it.mapValue && it.mapValue.fields;
+      if (f && f.done && f.done.booleanValue) done++;
+    }
+    const data = { total, done, rate: total ? Math.round(done / total * 100) : 0 };
+    habitCache = { t: Date.now(), data };
+    return data;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function refreshHabitStats() {
+  if (!document.getElementById('habitStats')) return;
+  const d = await fetchHabitStats();
+  const box = document.getElementById('habitStats');   // 重取：非同步期間畫面可能已重繪
+  if (!box) return;
+  box.innerHTML = d
+    ? `<div class="habit-row"><span>總項目</span><b>${d.total} 項</b></div>
+       <div class="habit-row"><span>已完成</span><b>${d.done}</b></div>
+       <div class="habit-row"><span>今日進度</span><b>${d.rate}%</b></div>`
+    : `<div class="home-line">暫時讀不到，點一下進入</div>`;
+}
+
 function renderHome() {
   const main = document.getElementById('main');
   const now = new Date();
@@ -699,7 +750,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v47</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v48</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -739,10 +790,11 @@ function renderHome() {
         </div>
         <div class="home-card" onclick="goDashboard()">
           <div class="home-card-title">📊 養成好習慣</div>
-          <div class="home-line">進入每日行動儀表板</div>
+          <div id="habitStats"><div class="home-line">讀取中…</div></div>
         </div>
       </div>
     </section>`;
+  refreshHabitStats();   // 非同步補上養成好習慣的三個數字
 }
 
 // 首頁點卡片 → 跳到對應分類

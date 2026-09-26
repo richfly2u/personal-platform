@@ -109,6 +109,17 @@ main {
   margin-right: 5px;
 }
 .home-line-more { opacity: 0.72; }
+/* 首頁養成好習慣卡：總項目／已完成／今日進度（半寬卡片，上下排列） */
+#habitStats { margin-top: 2px; }
+.habit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.76rem;
+  color: var(--text2);
+  line-height: 1.7;
+}
+.habit-row b { color: var(--text); font-size: 0.86rem; }
 .home-pos { color: #047857; }
 .home-neg { color: #dc2626; }
 
