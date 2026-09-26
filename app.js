@@ -402,14 +402,13 @@ function resetExpenseMonth() {
   renderMain();
 }
 
-// 發票明細 toggle（顯示/隱藏）
-function toggleInvDetail(btn) {
-  const list = btn.nextElementSibling;
+// 明細列表 toggle（在支出分類總額下，顯示/隱藏整個明細列表）
+function toggleAllDetail(btn) {
+  const list = document.getElementById('itemList');
   if (!list) return;
-  const hidden = list.classList.toggle('show');
-  btn.classList.toggle('open', hidden);
-  const n = (btn.textContent.match(/\d+/) || [])[0] || '';
-  btn.textContent = (hidden ? '隱藏明細 ' : '明細 ') + n + ' 項';
+  const hidden = list.classList.toggle('detail-hidden');
+  btn.classList.toggle('open', !hidden);
+  btn.textContent = hidden ? '顯示明細' : '隱藏明細';
 }
 
 // 每日花費曲線圖（SVG 直條圖）
@@ -493,6 +492,7 @@ function renderMain() {
 
   // 收支摘要（本月份 + 收入支出表 + 分類 + 每日曲線圖）
   let summaryHtml = '';
+  let chartHtml = '';
   if (isExpense) {
     const now = new Date();
     if (!expenseView.month) {
@@ -546,6 +546,8 @@ function renderMain() {
         <div class="label">${monthItems.length} 筆</div>
       </div>
       ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}
+      <button type="button" class="detail-toggle" onclick="toggleAllDetail(this)">顯示明細</button>`;
+    chartHtml = `
       <div class="chart-box">
         <div class="chart-title">📈 每日花費（${vMonth}月 1-${maxDay}日）</div>
         ${renderDailyChart(expItems, maxDay)}
@@ -583,7 +585,8 @@ function renderMain() {
     <section class="tab-content active">
       <h2>${cat.icon} ${cat.name}</h2>
       ${summaryHtml}
-      <div id="itemList">${listHtml}</div>
+      <div id="itemList" class="${isExpense ? 'detail-hidden' : ''}">${listHtml}</div>
+      ${chartHtml}
       ${addForm}
     </section>`;
 
@@ -699,13 +702,12 @@ function renderItem(cat, it) {
     const isIncome = (it.type || 'expense') === 'income';
     const c = isIncome ? '收入' : (it.cat || expenseCat(it.store, it.text));
     const itemsHtml = (it.items && it.items.length > 1)
-      ? `<button type="button" class="inv-toggle" onclick="toggleInvDetail(this)">明細 ${it.items.length} 項</button>
-          <div class="inv-items">${
-            it.items.map(x => {
-              const amt = (x.amount >= 0 ? '' : '-') + 'NT$' + Math.abs(x.amount);
-              return `<div class="inv-item"><span class="inv-name">${escHtml(x.name)}</span><span class="inv-qty">×${x.qty}</span><span class="inv-amt">${amt}</span></div>`;
-            }).join('')
-          }</div>`
+      ? `<div class="inv-items">${
+          it.items.map(x => {
+            const amt = (x.amount >= 0 ? '' : '-') + 'NT$' + Math.abs(x.amount);
+            return `<div class="inv-item"><span class="inv-name">${escHtml(x.name)}</span><span class="inv-qty">×${x.qty}</span><span class="inv-amt">${amt}</span></div>`;
+          }).join('')
+        }</div>`
       : '';
     return `
       <li>

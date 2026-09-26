@@ -331,36 +331,14 @@ li, .card {
 .cat-其他 { background: #e5e7eb; color: #4b5563; }
 .cat-income { background: #d1fae5; color: #047857; }
 
-/* 發票消費明細 toggle（顯示/隱藏） */
-.inv-toggle {
-  flex-basis: 100%;
-  background: none;
-  border: none;
-  border-top: 1px dashed var(--border);
-  padding: 6px 0 2px;
-  margin-top: 2px;
-  text-align: left;
-  font-size: 0.75rem;
-  color: var(--accent);
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-}
-.inv-toggle::before {
-  content: '▸ ';
-}
-.inv-toggle.open::before {
-  content: '▾ ';
-}
+/* 發票消費明細（直接顯示在每筆下） */
 .inv-items {
   flex-basis: 100%;
-  display: none;
   font-size: 0.8rem;
   color: var(--text2);
-  padding-top: 4px;
-}
-.inv-items.show {
-  display: block;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
 }
 .inv-item {
   display: flex;
@@ -371,6 +349,32 @@ li, .card {
 .inv-item .inv-name { flex: 1; }
 .inv-item .inv-qty { color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
 .inv-item .inv-amt { font-weight: 600; flex-shrink: 0; }
+
+/* 支出分類總額下的明細列表 toggle（顯示/隱藏整個列表） */
+.detail-toggle {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px dashed var(--border);
+  padding: 8px 0 4px;
+  margin-top: 6px;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.detail-toggle::before {
+  content: '▸ ';
+}
+.detail-toggle.open::before {
+  content: '▾ ';
+}
+#itemList.detail-hidden {
+  display: none;
+}
 
 /* === 行事曆 === */
 .cal-nav {
