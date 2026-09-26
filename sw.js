@@ -1,5 +1,5 @@
 /* === Service Worker === */
-const CACHE = 'personal-platform-v24';
+const CACHE = 'personal-platform-v25';
 const URLS = ['index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -16,6 +16,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   // 網路優先：先拿網路，失敗才用快取（確保最新版）
+  // 導覽／HTML 一定要繞過瀏覽器 HTTP 快取（GitHub Pages 是 max-age=600，
+  // 只寫 fetch(e.request) 會拿到快取舊 HTML，改了版還看到舊畫面）
+  const _u = new URL(e.request.url);
+  const _ext = _u.pathname.split('.').pop();
+  const _isHTML = e.request.mode === 'navigate' || !_ext || _ext === 'html' || _ext === 'htm' || _u.pathname.endsWith('/');
+  if (_isHTML) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request)));
+    return;
+  }
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();
