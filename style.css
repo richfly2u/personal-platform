@@ -331,21 +331,36 @@ li, .card {
 .cat-其他 { background: #e5e7eb; color: #4b5563; }
 .cat-income { background: #d1fae5; color: #047857; }
 
-/* 發票消費明細摺疊 */
-.inv-items {
+/* 發票消費明細 toggle（顯示/隱藏） */
+.inv-toggle {
   flex-basis: 100%;
-  font-size: 0.8rem;
-  color: var(--text2);
+  background: none;
+  border: none;
   border-top: 1px dashed var(--border);
-  padding-top: 6px;
+  padding: 6px 0 2px;
   margin-top: 2px;
-}
-.inv-items summary {
-  cursor: pointer;
+  text-align: left;
   font-size: 0.75rem;
   color: var(--accent);
   font-weight: 600;
+  cursor: pointer;
   user-select: none;
+}
+.inv-toggle::before {
+  content: '▸ ';
+}
+.inv-toggle.open::before {
+  content: '▾ ';
+}
+.inv-items {
+  flex-basis: 100%;
+  display: none;
+  font-size: 0.8rem;
+  color: var(--text2);
+  padding-top: 4px;
+}
+.inv-items.show {
+  display: block;
 }
 .inv-item {
   display: flex;

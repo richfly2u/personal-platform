@@ -402,6 +402,16 @@ function resetExpenseMonth() {
   renderMain();
 }
 
+// 發票明細 toggle（顯示/隱藏）
+function toggleInvDetail(btn) {
+  const list = btn.nextElementSibling;
+  if (!list) return;
+  const hidden = list.classList.toggle('show');
+  btn.classList.toggle('open', hidden);
+  const n = (btn.textContent.match(/\d+/) || [])[0] || '';
+  btn.textContent = (hidden ? '隱藏明細 ' : '明細 ') + n + ' 項';
+}
+
 // 每日花費曲線圖（SVG 直條圖）
 function renderDailyChart(monthItems, maxDay) {
   const daily = new Array(maxDay + 1).fill(0);
@@ -689,12 +699,13 @@ function renderItem(cat, it) {
     const isIncome = (it.type || 'expense') === 'income';
     const c = isIncome ? '收入' : (it.cat || expenseCat(it.store, it.text));
     const itemsHtml = (it.items && it.items.length > 1)
-      ? `<details class="inv-items"><summary>明細 ${it.items.length} 項</summary>${
-          it.items.map(x => {
-            const amt = (x.amount >= 0 ? '' : '-') + 'NT$' + Math.abs(x.amount);
-            return `<div class="inv-item"><span class="inv-name">${escHtml(x.name)}</span><span class="inv-qty">×${x.qty}</span><span class="inv-amt">${amt}</span></div>`;
-          }).join('')
-        }</details>`
+      ? `<button type="button" class="inv-toggle" onclick="toggleInvDetail(this)">明細 ${it.items.length} 項</button>
+          <div class="inv-items">${
+            it.items.map(x => {
+              const amt = (x.amount >= 0 ? '' : '-') + 'NT$' + Math.abs(x.amount);
+              return `<div class="inv-item"><span class="inv-name">${escHtml(x.name)}</span><span class="inv-qty">×${x.qty}</span><span class="inv-amt">${amt}</span></div>`;
+            }).join('')
+          }</div>`
       : '';
     return `
       <li>
