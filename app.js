@@ -214,6 +214,54 @@ async function loadSyncData() {
   saveData();
 }
 
+// === 發票即時更新（切到收支頁時觸發 VPS 去財政部抓一次）===
+const REFRESH_API = 'https://kindhome.net/api/pp-invoice/refresh';
+const REFRESH_STATUS = 'https://kindhome.net/api/pp-invoice/status';
+let invoiceRefreshing = false;
+
+function invoiceToast(msg, ms) {
+  let el = document.getElementById('invoiceToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'invoiceToast';
+    el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9999;'
+      + 'background:rgba(17,24,39,.92);color:#fff;padding:10px 16px;border-radius:999px;'
+      + 'font-size:.85rem;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:opacity .25s;white-space:nowrap;max-width:90vw';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.opacity = '1';
+  if (ms) setTimeout(() => { el.style.opacity = '0'; setTimeout(() => { el.style.display = 'none'; }, 300); }, ms);
+}
+
+async function refreshInvoicesFromVps() {
+  if (invoiceRefreshing) return;
+  invoiceRefreshing = true;
+  try {
+    const r = await fetch(REFRESH_API, { method: 'POST' });
+    const d = await r.json();
+    // 剛抓過（10 分鐘內）或正在抓 → 不用等，畫面顯示的已經是最新
+    if (d.status === 'fresh') { invoiceRefreshing = false; return; }
+    invoiceToast('發票更新中…', 0);
+    for (let i = 0; i < 40; i++) {          // 最多等 200 秒
+      await new Promise(res => setTimeout(res, 5000));
+      const s = await (await fetch(REFRESH_STATUS, { cache: 'no-store' })).json();
+      if (!s.running) {
+        await loadSyncData();               // 重讀最新資料
+        renderAll();                        // 重繪畫面
+        invoiceToast(s.last_result === 'ok' ? ('發票已更新（' + s.count + ' 筆）') : '發票更新失敗，稍後再試', 3000);
+        invoiceRefreshing = false;
+        return;
+      }
+    }
+    invoiceToast('發票更新太久，稍後再試', 3000);
+  } catch (e) {
+    // 離線或 API 不通 → 安靜結束（畫面上仍是上次抓到的資料）
+  }
+  invoiceRefreshing = false;
+}
+
 // === 語音輸入 ===
 function setupVoice() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -844,7 +892,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v57</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v58</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -898,6 +946,8 @@ function goTab(tabId) {
   currentTab = tabId;
   editingId = null;
   renderAll();
+  // 切到收支頁 → 立刻要 VPS 去財政部抓一次最新的（2026-09-27 前賢要求）
+  if (tabId === 'expense') refreshInvoicesFromVps();
 }
 
 // 回首頁
