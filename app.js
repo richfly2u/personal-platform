@@ -175,9 +175,18 @@ function nowStamp() {
 // === 同步資料 ===
 async function loadSyncData() {
   try {
-    const invRes = await fetch('data/invoices.json');
-    if (invRes.ok) {
-      const invoices = await invRes.json();
+    // 優先讀 VPS 上的即時發票（/opt/pp-invoice/daily_sync.sh 每天 08:00 自動更新，不用開電腦）
+    // 讀不到（離線／跨域失敗）才退回 repo 內的靜態檔
+    let invoices = null;
+    try {
+      const remote = await fetch(INVOICE_REMOTE_URL, { cache: 'no-store' });
+      if (remote.ok) invoices = await remote.json();
+    } catch (e) { /* 退回本地檔 */ }
+    if (!Array.isArray(invoices)) {
+      const invRes = await fetch('data/invoices.json');
+      if (invRes.ok) invoices = await invRes.json();
+    }
+    if (Array.isArray(invoices)) {
       const expenseItems = getItems('expense');
       const existingById = new Map(expenseItems.filter(e=>e.source==='invoice').map(e=>[e.id, e]));
       for (const inv of invoices) {
@@ -418,6 +427,10 @@ function setupVoice() {
 // 語音加標點：DeepSeek（與「聲寫AI」同一套：轉繁體、加標點、不改寫內容）
 // 走 kindhome.net（自己的 VPS，正式 HTTPS）→ 在家/在外面都能用，也不會跳任何授權詢問
 const POLISH_API = 'https://kindhome.net/api/polish';
+
+// 發票資料來源：VPS 每天 08:00 自動抓（/opt/pp-invoice/daily_sync.sh）
+// → 由 kindhome.net 提供，帶 CORS；讀不到才退回 repo 內的 data/invoices.json
+const INVOICE_REMOTE_URL = 'https://kindhome.net/pp_invoices.json';
 
 async function polishText(text, ms) {
   const ctl = new AbortController();
@@ -831,7 +844,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v56</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v57</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
