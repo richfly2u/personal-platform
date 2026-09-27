@@ -831,7 +831,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v55</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v56</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1054,7 +1054,7 @@ function renderMain() {
     : '';
   let listHtml = '';
   if (listItems.length === 0) {
-    listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用下方輸入框或語音新增</div>`;
+    listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`;
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));
     listHtml = sorted.map(it => {
