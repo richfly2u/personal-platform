@@ -898,7 +898,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v59</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v60</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1099,6 +1099,7 @@ function renderMain() {
         <div class="recent-item">
           <span class="recent-tag">最近消費</span>
           <span class="recent-name">${escHtml(recentItemLabel(recentExp))}</span>
+          <span class="recent-amt">NT$${Number(recentExp.amount || 0).toLocaleString()}</span>
           <span class="recent-meta">${escHtml(recentExp.date || '')}${recentExp.store ? ' · ' + escHtml(recentExp.store) : ''}</span>
         </div>` : '';
 
