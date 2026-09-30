@@ -608,6 +608,12 @@ const EXPENSE_CATS = ['食', '衣', '住', '行', '道場', '其他'];
 // 分類配色（餅狀圖圖例用）
 const CAT_COLORS = { '食': '#f59e0b', '衣': '#8b5cf6', '住': '#10b981', '行': '#3b82f6', '道場': '#ef4444', '其他': '#9ca3af' };
 
+// 最近消費顯示的品項名：發票優先取第一項明細，一般項目用手打的文字
+function recentItemLabel(it) {
+  if (it && Array.isArray(it.items) && it.items.length && it.items[0].name) return it.items[0].name;
+  return (it && it.text) ? it.text : '(無品項)';
+}
+
 function expenseCat(store, text) {
   const s = (store + ' ' + (text || '')).toLowerCase();
   // 道場（優先）
@@ -892,7 +898,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v58</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v59</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1079,6 +1085,23 @@ function renderMain() {
         <ul class="cat-detail${opened ? ' show' : ''}">${detailHtml || '<li class="cat-empty">本月無支出</li>'}</ul>`;
     }).join('');
 
+    // 最近一筆消費（讓前賢一眼看到最近買了什麼）
+    const recentExp = (() => {
+      const pool = getItems('expense').filter(it => (it.type || 'expense') !== 'income' && !pendingIds.has(it.id));
+      if (!pool.length) return null;
+      const dkey = it => {
+        const p = String(it.date || '').split('/');
+        return p.length === 2 ? (+p[0]) * 100 + (+p[1]) : 0;
+      };
+      return pool.slice().sort((a, b) => dkey(b) - dkey(a))[0];
+    })();
+    const recentHtml = recentExp ? `
+        <div class="recent-item">
+          <span class="recent-tag">最近消費</span>
+          <span class="recent-name">${escHtml(recentItemLabel(recentExp))}</span>
+          <span class="recent-meta">${escHtml(recentExp.date || '')}${recentExp.store ? ' · ' + escHtml(recentExp.store) : ''}</span>
+        </div>` : '';
+
     summaryHtml = `
       <div id="expenseSummary">
         <div class="month-nav">
@@ -1094,7 +1117,7 @@ function renderMain() {
         </div>
         <div class="label">${monthItems.length} 筆</div>
       </div>
-      ${catHtml ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}</div>` : ''}`;
+      ${(catHtml || recentHtml) ? `<div class="cat-stats"><div class="cat-stats-title">支出分類總額</div>${catHtml}${recentHtml}</div>` : ''}`;
     chartHtml = `
       <div class="chart-box">
         <div class="chart-title">📈 每日花費（${vMonth}月 1-${maxDay}日）</div>

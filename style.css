@@ -427,6 +427,41 @@ li, .card {
 .sum-balance { font-size: clamp(0.72rem, 3.4vw, 1rem); font-weight: 700; white-space: nowrap; }
 .sum-balance.pos { color: #047857; }
 .sum-balance.neg { color: #dc2626; }
+/* 最近消費（顯示在「支出分類總額」下方）*/
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.85rem;
+}
+.recent-tag {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fde68a;
+  color: #92400e;
+}
+.recent-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-meta {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+
 .cat-stats-title {
   font-size: 0.8rem;
   font-weight: 700;
