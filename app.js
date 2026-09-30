@@ -195,11 +195,18 @@ async function loadSyncData() {
           const existing = existingById.get(inv.id);
           existing.items = inv.items || existing.items || [];
           if (inv.amount != null) existing.amount = inv.amount;
-          if (inv.item) existing.text = inv.item;
+          if (inv.item) {
+            // text 與 item 都要更新：renderItem() 顯示品項時優先取 it.item，
+            // 只更新 text 會讓分類明細永遠停在第一次匯入的舊品項名
+            // （2026-09-30 前賢回報「食的明細沒有更新」的根因）
+            existing.text = inv.item;
+            existing.item = inv.item;
+          }
         } else {
           expenseItems.push({
             id: inv.id,
             store: inv.store || '未知',
+            item: inv.item || '',
             text: inv.item || '',
             amount: inv.amount || 0,
             date: inv.date || '',
@@ -898,7 +905,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v60</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v61</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
