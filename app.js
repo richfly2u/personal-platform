@@ -905,7 +905,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v61</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v62</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -1080,7 +1080,24 @@ function renderMain() {
       if (c === '住' && MONTHLY_HOUSING > 0) {
         detailHtml += `<li class="cat-fixed"><span style="flex:1">固定（房租）</span><span style="font-weight:600;color:var(--danger)">-NT$${MONTHLY_HOUSING.toLocaleString()}</span></li>`;
       }
-      detailHtml += catItems.map(it => (editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it))).join('');
+      // 依日期分組：同一天的消費放進同一個框（前賢 2026-09-30 要求）
+      const dayMap = new Map();
+      for (const it of catItems) {
+        const d = it.date || '未標日期';
+        if (!dayMap.has(d)) dayMap.set(d, []);
+        dayMap.get(d).push(it);
+      }
+      const dayKey = d => { const q = String(d).split('/'); return q.length === 2 ? (+q[0]) * 100 + (+q[1]) : 0; };
+      const days = [...dayMap.keys()].sort((a, b) => dayKey(b) - dayKey(a));
+      detailHtml += days.map(d => {
+        const list = dayMap.get(d);
+        const sum = list.reduce((acc, x) => acc + (x.amount || 0), 0);
+        const rows = list.map(it => (editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it))).join('');
+        return `<li class="day-group">
+            <div class="day-head"><span class="day-date">${escHtml(d)}</span><span class="day-sum">${list.length} 筆 · NT$${sum.toLocaleString()}</span></div>
+            <ul class="day-items">${rows}</ul>
+          </li>`;
+      }).join('');
       const opened = openCats.has(c);
       return `
         <div class="cat-row">

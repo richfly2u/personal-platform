@@ -602,6 +602,60 @@ li, .card {
   box-shadow: none;
   border: 1px solid var(--border);
 }
+
+/* 同一天的消費用一個框框起來（2026-09-30 前賢要求）*/
+.cat-detail li.day-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: #fffdf9;
+}
+.day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.day-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: 0.02em;
+}
+.day-sum {
+  font-size: 0.7rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.cat-detail .day-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cat-detail .day-items li strong,
+.cat-detail .day-items li span {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.cat-detail .day-items li {
+  border: none;
+  border-bottom: 1px dashed #f0e6d8;
+  border-radius: 0;
+  margin-bottom: 0;
+  padding: 5px 0;
+  background: transparent;
+}
+.cat-detail .day-items li:first-child {
+  padding-top: 2px;
+}
+.cat-detail .day-items li:last-child {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
 .cat-detail .cat-empty,
 .cat-detail .cat-fixed {
   background: none;
