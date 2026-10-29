@@ -638,8 +638,13 @@ window.__ppDiaryUpsert = function (text, extras) {
     const hasExtras = !!(extras && ((extras.images || []).length || extras.audio || extras.sketch || (extras.rows || []).length));
     const empty = !String(text || '').trim() && !hasExtras;
     let it = diaryCurId ? arr.find(x => x.id === diaryCurId) : null;
-    if (empty) {                       // 全部清空 → 收掉這筆
-      if (it) { const i = arr.indexOf(it); if (i >= 0) arr.splice(i, 1); saveData(); }
+    if (empty) {
+      // 有內容 → 這一筆完成保留；完全空白 → 收掉不留垃圾
+      if (it) {
+        const hasContent = String(it.text || '').trim() || (it.images || []).length || it.audio || it.sketch || (it.rows || []).length;
+        if (!hasContent) { const i = arr.indexOf(it); if (i >= 0) arr.splice(i, 1); }
+        saveData();
+      }
       diaryCurId = null;
       try { localStorage.removeItem('diary.currentId'); } catch (e) {}
       return;
@@ -1448,7 +1453,22 @@ function renderMain() {
     // 編輯（itemList 收入 + 分類明細支出）
     main.querySelectorAll('.edit-btn').forEach(el => {
       el.addEventListener('click', () => {
-        editingId = el.dataset.id;
+        const id = el.dataset.id;
+        if (currentTab === 'diary' && window.DiaryUI) {      // 日記：用原本的輸入框＋工具列來編輯
+          diaryCurId = id;
+          try { localStorage.setItem('diary.currentId', id); } catch (e) {}
+          editingId = null;
+          renderMain();
+          const ta = document.getElementById('addText');
+          if (ta) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+            const box = ta.closest('.diary-box') || ta;
+            box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }
+          return;
+        }
+        editingId = id;
         renderMain();
       });
     });

@@ -161,7 +161,7 @@
     restoreDraft();
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
-      inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; scheduleSave(); });
+      inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; autoSizeTa(); scheduleSave(); });
       inputEl.addEventListener("blur", () => { saveDraftNow(); if (window.__ppDiaryRerender) window.__ppDiaryRerender(); });
     }
     window.addEventListener("pagehide", saveDraftNow);
@@ -222,6 +222,14 @@
     }
   }
   // 把「正在寫的那筆」載回輸入框（從資料還原）
+  // 多行內容自動長高，換行格式才看得到
+  function autoSizeTa() {
+    const ta = document.querySelector("#addText") || inputEl;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(420, Math.max(44, ta.scrollHeight)) + "px";
+  }
+
   const stripStamp = s => String(s || "").replace(/^\s*\d{1,2}-\d{1,2}\s*(?:上午|下午)?\s*\d{0,2}:?\d{0,2}\s*\n?/, "");
 
   function loadEntry(item) {
@@ -229,6 +237,7 @@
     suppressSave = true;
     liveText = stripStamp(item.text || "");
     if (inputEl && inputEl.value !== liveText) inputEl.value = liveText;
+    autoSizeTa();
     const itemHasMedia = (item.images || []).length || item.audio || item.sketch || (item.rows || []).length;
     if (itemHasMedia || !draft || (!draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length)) {
       draft = {
