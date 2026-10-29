@@ -162,7 +162,7 @@
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
       inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; scheduleSave(); });
-      inputEl.addEventListener("blur", saveDraftNow);
+      inputEl.addEventListener("blur", () => { saveDraftNow(); if (window.__ppDiaryRerender) window.__ppDiaryRerender(); });
     }
     window.addEventListener("pagehide", saveDraftNow);
     document.addEventListener("visibilitychange", () => { if (document.hidden) saveDraftNow(); });
