@@ -1634,3 +1634,45 @@ input:focus, textarea:focus, select:focus {
   .home-links { display:flex; flex-wrap:wrap; }
   .utility-dialog { padding:16px; border-radius:18px; }
 }
+
+
+/* === 底部導覽：等寬均分，不擁擠、不橫向捲動 === */
+#nav {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  overflow: visible;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+#nav .nav-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  min-height: 50px;
+  padding: 6px 2px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  border-radius: 12px;
+  font-size: .66rem;
+  line-height: 1.1;
+}
+#nav .nav-btn .nvi {
+  font-size: 1.02rem;
+  line-height: 1.1;
+}
+#nav .nav-btn .nvl {
+  font-size: .66rem;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#nav .nav-btn.add-cat-btn .nvi { font-size: 1.15rem; }

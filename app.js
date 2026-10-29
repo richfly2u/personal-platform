@@ -1051,7 +1051,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v64</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v${APP_VERSION}</small></h2>
         <div class="home-links">
           <button class="home-link utility-link" type="button" onclick="openGlobalSearch()">🔎 搜尋</button>
           <button class="home-link utility-link" type="button" onclick="exportBackup()">⬇ 備份</button>
@@ -1127,14 +1127,14 @@ function goDashboard() {
 function renderNav() {
   const nav = document.getElementById('nav');
   nav.innerHTML =
-    `<button class="nav-btn home-btn ${homeOpen?'active':''}" id="homeBtn" title="回首頁">🏠</button>` +
+    `<button class="nav-btn home-btn ${homeOpen?'active':''}" id="homeBtn" title="回首頁"><span class="nvi">🏠</span><span class="nvl">首頁</span></button>` +
     appData.categories.map(c => `
     <button class="nav-btn ${(c.id===currentTab && !dashboardOpen && !homeOpen)?'active':''}" data-tab="${c.id}">
-      ${c.icon} ${c.name.replace('事項','')}
+      <span class="nvi">${c.icon}</span><span class="nvl">${c.name.replace('事項','')}</span>
     </button>
   `).join('') + `
-    <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
-    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡">📊 習慣</button>`;
+    <button class="nav-btn add-cat-btn" title="新增類別"><span class="nvi">＋</span><span class="nvl">更多</span></button>
+    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡"><span class="nvi">📊</span><span class="nvl">習慣</span></button>`;
 
   const homeBtn = document.getElementById('homeBtn');
   if (homeBtn) homeBtn.addEventListener('click', goHome);
