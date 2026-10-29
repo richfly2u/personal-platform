@@ -162,6 +162,7 @@
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
       inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; autoSizeTa(); scheduleSave(); });
+      window.addEventListener("resize", autoSizeTa);
       inputEl.addEventListener("blur", () => { saveDraftNow(); if (window.__ppDiaryRerender) window.__ppDiaryRerender(); });
     }
     window.addEventListener("pagehide", saveDraftNow);
@@ -226,8 +227,10 @@
   function autoSizeTa() {
     const ta = document.querySelector("#addText") || inputEl;
     if (!ta) return;
+    // 輸入框至少佔畫面 1/3（扣掉工具列高度），內容更多才繼續長高
+    const minH = Math.max(150, Math.round(window.innerHeight / 3) - 52);
     ta.style.height = "auto";
-    ta.style.height = Math.min(420, Math.max(44, ta.scrollHeight)) + "px";
+    ta.style.height = Math.max(minH, Math.min(640, ta.scrollHeight)) + "px";
   }
 
   const stripStamp = s => String(s || "").replace(/^\s*\d{1,2}-\d{1,2}\s*(?:上午|下午)?\s*\d{0,2}:?\d{0,2}\s*\n?/, "");

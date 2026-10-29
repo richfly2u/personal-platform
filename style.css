@@ -954,6 +954,10 @@ nav {
 }
 /* 日記編輯框：工具列收在框內（小米備忘錄樣式） */
 .diary-box {
+  display: flex;
+  flex-direction: column;
+  min-height: 33vh;
+
   flex: 1;
   min-width: 0;
   border: 1px solid var(--border);
@@ -962,6 +966,8 @@ nav {
   overflow: hidden;
 }
 .diary-box textarea {
+  flex: 1 1 auto;
+
   color: inherit;
   width: 100%;
   border: 0 !important;
