@@ -952,6 +952,28 @@ nav {
   box-shadow: none;
   border: 1px solid #bbf7d0;
 }
+/* 日記編輯框：工具列收在框內（小米備忘錄樣式） */
+.diary-box {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.diary-box textarea {
+  width: 100%;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 10px 12px 2px !important;
+  min-height: 44px;
+  display: block;
+  box-sizing: border-box;
+}
+#diaryTools { border-top: 1px solid var(--border); padding: 0 6px 2px; }
+#diaryTools .dt-bar { padding: 3px 0 0 !important; }
+
 .add-form input,
 .add-form textarea {
   flex: 1;
@@ -978,6 +1000,133 @@ nav {
   font-size: 0.95rem;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+
+/* ============ 待辦：艾森豪四象限 ============ */
+.quad-pick {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.quad-pick .qp {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.quad-pick .qp::before {
+  content: "";
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--line);
+  flex: 0 0 auto;
+}
+.quad-pick .qp.on {
+  border-color: var(--accent);
+  color: #3d2c1e;
+  font-weight: 600;
+  background: #fffaf2;
+}
+.quad-pick .qp.q1::before { background: #dc2626; }
+.quad-pick .qp.q2::before { background: #f59e0b; }
+.quad-pick .qp.q3::before { background: #2563eb; }
+.quad-pick .qp.q4::before { background: #9ca3af; }
+
+.quad {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px 6px;
+  margin-bottom: 10px;
+  box-shadow: none;
+}
+.quad-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.quad-no {
+  width: 19px; height: 19px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  color: #fff;
+  background: var(--line);
+  flex: 0 0 auto;
+}
+.quad-n {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text2);
+  font-weight: 400;
+}
+.quad.q1 { border-left: 3px solid #dc2626; }
+.quad.q1 .quad-no { background: #dc2626; }
+.quad.q2 { border-left: 3px solid #f59e0b; }
+.quad.q2 .quad-no { background: #f59e0b; }
+.quad.q3 { border-left: 3px solid #2563eb; }
+.quad.q3 .quad-no { background: #2563eb; }
+.quad.q4 { border-left: 3px solid #9ca3af; }
+.quad.q4 .quad-no { background: #9ca3af; }
+.quad.qdone { border-left: 3px solid var(--success); }
+.quad.qdone .quad-no { background: var(--success); }
+
+.quad-list { margin: 0; padding: 0; }
+.quad-list > li {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  border-bottom: 1px dashed var(--border);
+  padding: 7px 2px;
+  margin: 0;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.quad-list > li:last-child { border-bottom: 0; }
+.quad-empty {
+  color: var(--text2);
+  font-size: 0.78rem;
+  border-bottom: 0 !important;
+}
+
+.q-badge {
+  width: 22px; height: 22px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  flex: 0 0 auto;
+  cursor: pointer;
+  line-height: 1;
+}
+.q-badge.q1 { background: #dc2626; }
+.q-badge.q2 { background: #f59e0b; }
+.q-badge.q3 { background: #2563eb; }
+.q-badge.q4 { background: #9ca3af; }
+
+/* 打勾：漸閃淡出 */
+@keyframes todoFadeOut {
+  0%   { opacity: 1; filter: blur(0); transform: translateX(0); }
+  45%  { opacity: 0.45; filter: blur(0.3px); transform: translateX(3px); }
+  100% { opacity: 0; filter: blur(1.2px); transform: translateX(10px); }
+}
+.todo-li.todo-fading {
+  animation: todoFadeOut 0.48s ease forwards;
+  pointer-events: none;
 }
 
 /* 編輯/刪除按鈕 */

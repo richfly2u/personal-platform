@@ -30,6 +30,7 @@ let appData = {
 
 let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
+let newQuad = 1;        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
@@ -566,6 +567,13 @@ function bindAddForm() {
   });
   addText.addEventListener('input', () => autoGrowInput(addText));
   autoGrowInput(addText);
+  // 待辦：四象限選擇
+  document.querySelectorAll('.quad-pick .qp').forEach(btn => {
+    btn.addEventListener('click', () => {
+      newQuad = Number(btn.dataset.q) || 1;
+      document.querySelectorAll('.quad-pick .qp').forEach(b => b.classList.toggle('on', b === btn));
+    });
+  });
 }
 
 function submitAddText() {
@@ -583,9 +591,11 @@ function submitAddText() {
   } else {
     newId = uid();
     const item = {id: newId, text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false};
-    // 日記附件（照片／錄音／手寫／背景／明細）
-    if (cat.id === 'diary' && window.DiaryUI && window.DiaryUI.hasDraft()) {
-      Object.assign(item, window.DiaryUI.takeDraft());
+    if (cat.id === 'todo') item.q = newQuad;
+    // 日記附件（照片／錄音／手寫／背景／明細）＋清掉自動草稿
+    if (cat.id === 'diary' && window.DiaryUI) {
+      if (window.DiaryUI.hasDraft()) Object.assign(item, window.DiaryUI.takeDraft());
+      else window.DiaryUI.clearDraft();
     }
     getItems(cat.id).unshift(item);
   }
@@ -1180,9 +1190,10 @@ function renderMain() {
 
   // 列表（收支頁：支出已在分類明細中，列表只顯示收入）
   // 本次剛新增的先排除（改顯示在輸入框下方的「剛新增」區），重新整理後才歸位
+  const todoMode = cat.id === 'todo';   // 待辦一律直接進四象限方框
   const listItems = (isExpense ? items.filter(it => (it.type || 'expense') === 'income') : items)
-    .filter(it => !pendingIds.has(it.id));
-  const pendingItems = getItems(cat.id).filter(it => pendingIds.has(it.id));
+    .filter(it => todoMode || !pendingIds.has(it.id));
+  const pendingItems = todoMode ? [] : getItems(cat.id).filter(it => pendingIds.has(it.id));
   const pendingHtml = pendingItems.length
     ? `<div class="pending-box">
          <div class="pending-title">✅ 剛新增 ${pendingItems.length} 筆（重新整理後歸位）</div>
@@ -1190,7 +1201,33 @@ function renderMain() {
        </div>`
     : '';
   let listHtml = '';
-  if (listItems.length === 0) {
+  if (cat.id === 'todo') {
+    // 艾森豪矩陣：四象限各一個方框
+    const QUADS = [
+      { q: 1, name: '重要且緊急' },
+      { q: 2, name: '重要不緊急' },
+      { q: 3, name: '緊急不重要' },
+      { q: 4, name: '不重要不緊急' }
+    ];
+    const openItems = listItems.filter(it => !it.completed);
+    const doneItems = listItems.filter(it => it.completed);
+    listHtml = QUADS.map(g => {
+      const arr = openItems.filter(it => (Number(it.q) || 4) === g.q);
+      const body = arr.length
+        ? arr.map(it => editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it)).join('')
+        : '<li class="quad-empty">目前沒有</li>';
+      return `<div class="quad q${g.q}">
+          <div class="quad-head"><span class="quad-no">${g.q}</span>${g.name}<span class="quad-n">${arr.length}</span></div>
+          <ul class="quad-list">${body}</ul>
+        </div>`;
+    }).join('');
+    if (doneItems.length) {
+      listHtml += `<div class="quad qdone">
+          <div class="quad-head">已完成<span class="quad-n">${doneItems.length}</span></div>
+          <ul class="quad-list">${doneItems.map(it => renderItem(cat, it)).join('')}</ul>
+        </div>`;
+    }
+  } else if (listItems.length === 0) {
     listHtml = isExpense ? '' : (pendingItems.length ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`);
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));
@@ -1210,6 +1247,27 @@ function renderMain() {
          ${micBtn}
          <div class="add-row">
            <textarea id="addText" rows="2" placeholder="例如：全家 買飲料 50元｜薪水 50000元"></textarea>
+           <button id="addBtn">新增</button>
+         </div>
+       </div>`
+    : cat.id === 'diary'
+    ? `<div class="add-form">
+         <div class="add-row">
+           <div class="diary-box">
+             <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
+             <div id="diaryTools"></div>
+           </div>
+           <button id="addBtn">新增</button>
+         </div>
+       </div>`
+    : cat.id === 'todo'
+    ? `<div class="add-form">
+         <div class="quad-pick">
+           ${[[1,'重要且緊急'],[2,'重要不緊急'],[3,'緊急不重要'],[4,'不重要不緊急']]
+             .map(p => `<button type="button" class="qp q${p[0]}${newQuad===p[0]?' on':''}" data-q="${p[0]}">${p[1]}</button>`).join('')}
+         </div>
+         <div class="add-row">
+           <textarea id="addText" rows="2" placeholder="新增待辦…"></textarea>
            <button id="addBtn">新增</button>
          </div>
        </div>`
@@ -1245,12 +1303,36 @@ function renderMain() {
   const list = document.getElementById('itemList');
   if (list) {
     // 勾選
-    list.querySelectorAll('.todo-check').forEach(el => {
+    main.querySelectorAll('.todo-check').forEach(el => {
       el.addEventListener('click', async () => {
-        const it = items.find(i => i.id === el.dataset.id);
+        const hit = findItemById(el.dataset.id);
+        const it = hit ? hit.arr[hit.idx] : items.find(i => i.id === el.dataset.id);
         if (!it) return;
-        const checking = !it.completed;
-        it.completed = checking;
+        if (it.completed) {           // 取消完成：直接還原
+          it.completed = false;
+          saveData();
+          renderMain();
+          return;
+        }
+        // 打勾：先播放漸閃淡出動畫，再歸入已完成
+        const li = el.closest('li');
+        if (li) li.classList.add('todo-fading');
+        setTimeout(() => {
+          it.completed = true;
+          saveData();
+          renderMain();
+        }, 480);
+      });
+    });
+
+    // 象限切換（點編號循環 1→2→3→4）
+    main.querySelectorAll('.q-badge').forEach(b => {
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        const hit = findItemById(b.dataset.id);
+        if (!hit) return;
+        const cur = Number(hit.arr[hit.idx].q) || 4;
+        hit.arr[hit.idx].q = cur % 4 + 1;
         saveData();
         renderMain();
       });
@@ -1338,10 +1420,12 @@ function renderItem(cat, it) {
       </li>`;
   }
   if (cat.id === 'todo') {
+    const q = Number(it.q) || 4;
     return `
-      <li>
+      <li class="todo-li${it.completed ? ' is-done' : ''}">
         <span class="todo-check ${it.completed?'done':''}" data-id="${it.id}">✓</span>
         <span class="todo-text ${it.completed?'done':''}" style="flex:1"><span class="todo-marker">▸</span>${escHtml(it.text)}</span>
+        <button class="q-badge q${q}" data-id="${it.id}" title="切換象限">${q}</button>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>

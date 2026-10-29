@@ -116,6 +116,7 @@
 .diary-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(8px);background:#3d2c1e;color:#fff;
   padding:9px 15px;border-radius:999px;font-size:.78rem;opacity:0;transition:.2s;z-index:260;pointer-events:none;max-width:86vw;text-align:center}
 .diary-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.dt-saved{font-size:.66rem;color:var(--text2);text-align:right;padding:0 4px 3px;min-height:13px;opacity:.85}
 .sk-wrap{position:fixed;inset:0;background:#fff;z-index:210;display:flex;flex-direction:column}
 .sk-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #eee;font-size:.9rem;color:#3d2c1e}
 .sk-wrap canvas{flex:1;touch-action:none;background:#fff;width:100%}
@@ -146,14 +147,86 @@
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
       <div class="dt-draft" id="dtDraft"></div>
+      <div class="dt-saved" id="dtSaved"></div>
       <div class="dt-pop" id="dtPop"></div>
       <input type="file" id="dtFile" accept="image/*" multiple style="display:none">`;
-    formEl.appendChild(toolsEl);
+    const host = formEl.querySelector("#diaryTools") || formEl;
+    host.appendChild(toolsEl);
     popEl = toolsEl.querySelector("#dtPop");
     fileEl = toolsEl.querySelector("#dtFile");
     toolsEl.addEventListener("click", onClick);
     fileEl.addEventListener("change", e => { addImages([...e.target.files]); e.target.value = ""; });
+
+    // ① 自動補日期（聚焦即補），② 隨寫隨存（草稿自動保存／還原）
+    restoreDraft();
+    if (inputEl) {
+      inputEl.addEventListener("focus", () => {
+        if (!inputEl.value.trim()) {
+          inputEl.value = datePrefix() + "\n";
+          inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+      inputEl.addEventListener("input", e => { liveText = e.target.value; scheduleSave(); });
+      inputEl.addEventListener("blur", saveDraftNow);
+    }
+    window.addEventListener("pagehide", saveDraftNow);
+    document.addEventListener("visibilitychange", () => { if (document.hidden) saveDraftNow(); });
+
     paint();
+  }
+
+  // ---------- 日期前綴 ----------
+  const pad2 = n => String(n).padStart(2, "0");
+  function datePrefix() {
+    const d = new Date(), h = d.getHours();
+    return pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " +
+      (h < 12 ? "上午" : "下午") + (h % 12 || 12) + ":" + pad2(d.getMinutes());
+  }
+
+  // ---------- 隨寫隨存 ----------
+  const DRAFT_KEY = "diary.draft.v1";
+  let saveTimer = null;
+  let liveText = "";   // 即時緩衝：畫面重繪也不會丟字
+  function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraftNow, 400); }
+  function saveDraftNow() {
+    try {
+      const ta = document.querySelector("#addText");
+      const domText = ta ? ta.value : (inputEl ? inputEl.value : "");
+      if (domText) liveText = domText;
+      const text = liveText;
+      const hasAny = text.trim() || (draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length)));
+      if (!hasAny) { localStorage.removeItem(DRAFT_KEY); markSaved(""); return; }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, d: draft || empty(), at: Date.now() }));
+      const d = new Date();
+      markSaved("已存 " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()));
+    } catch (e) {}
+  }
+  function restoreDraft() {
+    let raw = null;
+    try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) {}
+    if (!raw) return;
+    let o = null;
+    try { o = JSON.parse(raw); } catch (e) { return; }
+    if (!o) return;
+    const memHas = draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length));
+    if (!liveText && o.text) liveText = o.text;
+    if (inputEl && !inputEl.value.trim() && liveText) inputEl.value = liveText;
+    if (!memHas && o.d) draft = Object.assign(empty(), o.d);
+    if ((o.text && o.text.trim()) || (o.d && ((o.d.images || []).length || o.d.audio || o.d.sketch || (o.d.rows || []).length))) {
+      markSaved("已還原草稿");
+      if (inputEl && inputEl.value) inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  }
+  function markSaved(msg) {
+    const el = document.getElementById("dtSaved");
+    if (el) el.textContent = msg || "";
+  }
+  function clearDraft() {
+    clearTimeout(saveTimer);
+    liveText = "";
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+    markSaved("");
   }
 
   function imgFromFile(file, maxSide, q) {
@@ -292,6 +365,7 @@
     d.innerHTML = h;
     const rb = toolsEl.querySelector('[data-dt="rec"]');
     if (rb) { rb.innerHTML = rec ? IC.stop : IC.mic; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
+    if (toolsEl) scheduleSave();
   }
 
   function onClick(e) {
@@ -427,6 +501,7 @@
     if (d.size) out.size = d.size;
     if (d.rows.length && d.rows.some(r => r.name || r.amount)) out.rows = d.rows.filter(r => r.name || r.amount).map(r => ({ name: r.name, qty: Number(r.qty) || 1, amount: Number(r.amount) || 0, done: false }));
     draft = empty();
+    clearDraft();
     paint();
     return out;
   }
@@ -440,5 +515,5 @@
     clearTimeout(tt); tt = setTimeout(() => el.classList.remove("on"), 1900);
   }
 
-  window.DiaryUI = { mount, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, BGS };
+  window.DiaryUI = { mount, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
 })();
