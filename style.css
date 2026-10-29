@@ -1152,6 +1152,78 @@ li.diary-li { position: relative; margin-bottom: 22px; }
   pointer-events: none;
 }
 
+
+/* 空象限收成一條細列 */
+.quad.is-empty {
+  padding: 7px 12px;
+  margin-bottom: 6px;
+  background: #fbf8f3;
+  border-style: dashed;
+  border-left-width: 3px;
+}
+.quad.is-empty .quad-head { margin-bottom: 0; font-weight: 600; color: var(--text2); font-size: 0.8rem; }
+.quad.is-empty .quad-no { opacity: 0.55; }
+
+/* 已完成收合 */
+.quad.collapsed { padding-bottom: 7px; }
+.quad-head-btn { cursor: pointer; }
+.quad-caret { margin-left: 6px; color: var(--text2); font-size: 0.75rem; }
+.quad-clear {
+  margin: 6px 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.74rem;
+  padding: 2px 0;
+}
+
+/* 選中的優先級要明顯 */
+.quad-pick .qp.on { border-width: 2px; padding: 7px 9px; }
+.quad-pick .qp.q1.on { background: #fef2f2; border-color: #dc2626; color: #b91c1c; font-weight: 700; }
+.quad-pick .qp.q2.on { background: #fffbeb; border-color: #f59e0b; color: #b45309; font-weight: 700; }
+.quad-pick .qp.q3.on { background: #eff6ff; border-color: #2563eb; color: #1d4ed8; font-weight: 700; }
+.quad-pick .qp.q4.on { background: #f3f4f6; border-color: #6b7280; color: #4b5563; font-weight: 700; }
+
+/* 截止日 / 建立日 */
+.due-chip {
+  font-size: 0.68rem;
+  background: #fff7ed;
+  color: #b45309;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  padding: 1px 7px;
+  flex: 0 0 auto;
+}
+.todo-date { font-size: 0.68rem; color: var(--text2); flex: 0 0 auto; }
+
+/* 復原提示 */
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  background: #3d2c1e;
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  z-index: 300;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  max-width: 90vw;
+}
+.undo-toast.on { display: flex; }
+.undo-toast button {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.4);
+  color: #ffd9a8;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.73rem;
+}
+
 /* 編輯/刪除按鈕 */
 .edit-btn, .del-btn {
   background: none;

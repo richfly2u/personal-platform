@@ -30,7 +30,8 @@ let appData = {
 
 let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
-let newQuad = 1;        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
+let newQuad = 1;
+let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
@@ -578,6 +579,90 @@ function bindAddForm() {
   });
 }
 
+// 從文字辨識截止日（今天/明天/後天/週X/下週X/10-30 或 10/30）
+function parseDue(text) {
+  const t = String(text || '');
+  const d = new Date();
+  const fmt = x => `${x.getMonth()+1}/${x.getDate()}`;
+  const add = n => { const x = new Date(d); x.setDate(x.getDate() + n); return fmt(x); };
+  if (/大後天/.test(t)) return add(3);
+  if (/後天/.test(t)) return add(2);
+  if (/明天|明日/.test(t)) return add(1);
+  if (/今天|今日/.test(t)) return fmt(d);
+  const wm = t.match(/(下週|下周|下星期)([一二三四五六日天])/);
+  const wdMap = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 0, 天: 0 };
+  if (wm) {
+    const want = wdMap[wm[2]];
+    const x = new Date(d);
+    const diff = ((want - x.getDay()) + 7) % 7 || 7;   // 下週同一星期
+    x.setDate(x.getDate() + diff + 7);
+    return fmt(x);
+  }
+  const w2 = t.match(/(本週|這週|週|周|星期)([一二三四五六日天])/);
+  if (w2) {
+    const want = wdMap[w2[2]];
+    const x = new Date(d);
+    x.setDate(x.getDate() + (((want - x.getDay()) + 7) % 7));
+    return fmt(x);
+  }
+  const md = t.match(/(\d{1,2})[\/\-](\d{1,2})/);
+  if (md) return `${Number(md[1])}/${Number(md[2])}`;
+  return null;
+}
+
+// 日記隨寫隨存：邊打邊寫進同一筆，不必按「新增」
+// 刪除／清除後的「復原」提示
+let undoState = null, undoTimer = null;
+function showUndo(msg, fn) {
+  let el = document.getElementById('undoToast');
+  if (!el) { el = document.createElement('div'); el.id = 'undoToast'; el.className = 'undo-toast'; document.body.appendChild(el); }
+  el.innerHTML = `<span>${escHtml(msg)}</span><button type="button" id="undoBtn">復原</button>`;
+  el.classList.add('on');
+  clearTimeout(undoTimer);
+  undoState = fn;
+  const btn = document.getElementById('undoBtn');
+  if (btn) btn.onclick = () => { const f = undoState; hideUndo(); if (f) f(); };
+  undoTimer = setTimeout(hideUndo, 6000);
+}
+function hideUndo() {
+  const el = document.getElementById('undoToast');
+  if (el) el.classList.remove('on');
+  undoState = null;
+}
+
+window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
+
+window.__ppDiaryUpsert = function (text, extras) {
+  try {
+    const arr = getItems('diary');
+    const hasExtras = !!(extras && ((extras.images || []).length || extras.audio || extras.sketch || (extras.rows || []).length));
+    const empty = !String(text || '').trim() && !hasExtras;
+    let it = diaryCurId ? arr.find(x => x.id === diaryCurId) : null;
+    if (empty) {                       // 全部清空 → 收掉這筆
+      if (it) { const i = arr.indexOf(it); if (i >= 0) arr.splice(i, 1); saveData(); }
+      diaryCurId = null;
+      try { localStorage.removeItem('diary.currentId'); } catch (e) {}
+      return;
+    }
+    if (!it) {
+      it = { id: uid(), text: '', date: nowStamp(), source: 'manual', completed: false };
+      arr.unshift(it);
+      diaryCurId = it.id;
+      try { localStorage.setItem('diary.currentId', diaryCurId); } catch (e) {}
+    }
+    it.text = String(text || '');
+    if (extras) {
+      it.images = extras.images || [];
+      it.audio = extras.audio || null;
+      it.sketch = extras.sketch || null;
+      it.rows = extras.rows || [];
+      it.bg = extras.bg || '';
+      it.size = extras.size || '';
+    }
+    saveData();
+  } catch (e) {}
+};
+
 function submitAddText() {
   clearAutoSave();
   const addText = document.getElementById('addText');
@@ -593,7 +678,7 @@ function submitAddText() {
   } else {
     newId = uid();
     const item = {id: newId, text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false};
-    if (cat.id === 'todo') item.q = newQuad;
+    if (cat.id === 'todo') { item.q = newQuad; const d = parseDue(text); if (d) item.due = d; }
     // 日記附件（照片／錄音／手寫／背景／明細）＋清掉自動草稿
     if (cat.id === 'diary' && window.DiaryUI) {
       if (window.DiaryUI.hasDraft()) Object.assign(item, window.DiaryUI.takeDraft());
@@ -1215,18 +1300,20 @@ function renderMain() {
     const doneItems = listItems.filter(it => it.completed);
     listHtml = QUADS.map(g => {
       const arr = openItems.filter(it => (Number(it.q) || 4) === g.q);
-      const body = arr.length
-        ? arr.map(it => editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it)).join('')
-        : '<li class="quad-empty">目前沒有</li>';
-      return `<div class="quad q${g.q}">
-          <div class="quad-head"><span class="quad-no">${g.q}</span>${g.name}<span class="quad-n">${arr.length}</span></div>
-          <ul class="quad-list">${body}</ul>
-        </div>`;
+      const head = `<div class="quad-head"><span class="quad-no">${g.q}</span>${g.name}<span class="quad-n">${arr.length}</span></div>`;
+      if (!arr.length) return `<div class="quad q${g.q} is-empty">${head}</div>`;   // 空象限收成一行細條
+      const body = arr.map(it => editingId === it.id ? renderEditForm(cat, it) : renderItem(cat, it)).join('');
+      return `<div class="quad q${g.q}">${head}<ul class="quad-list">${body}</ul></div>`;
     }).join('');
     if (doneItems.length) {
-      listHtml += `<div class="quad qdone">
-          <div class="quad-head">已完成<span class="quad-n">${doneItems.length}</span></div>
-          <ul class="quad-list">${doneItems.map(it => renderItem(cat, it)).join('')}</ul>
+      const open = !!window.__doneOpen;
+      listHtml += `<div class="quad qdone${open ? '' : ' collapsed'}">
+          <div class="quad-head quad-head-btn" data-donetoggle="1">
+            <span class="quad-no">✓</span>已完成<span class="quad-n">${doneItems.length}</span>
+            <span class="quad-caret">${open ? '▾' : '▸'}</span>
+          </div>
+          ${open ? `<ul class="quad-list">${doneItems.map(it => renderItem(cat, it)).join('')}</ul>
+            <button type="button" class="quad-clear" data-cleardone="1">清除全部已完成</button>` : ''}
         </div>`;
     }
   } else if (listItems.length === 0) {
@@ -1259,7 +1346,6 @@ function renderMain() {
              <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
              <div id="diaryTools"></div>
            </div>
-           <button id="addBtn">新增</button>
          </div>
        </div>`
     : cat.id === 'todo'
@@ -1298,6 +1384,9 @@ function renderMain() {
   if (cat.id === 'diary' && window.DiaryUI) {
     const af = main.querySelector('.add-form');
     if (af) window.DiaryUI.mount(af, 'diary');
+    if (!diaryCurId) { try { diaryCurId = localStorage.getItem('diary.currentId') || null; } catch (e) {} }
+    const cur = diaryCurId ? getItems('diary').find(x => x.id === diaryCurId) : null;
+    if (cur && window.DiaryUI.loadEntry) window.DiaryUI.loadEntry(cur);
     window.DiaryUI.afterRender(main, saveData);   // 含待歸位清單與正式列表
   }
 
@@ -1327,6 +1416,23 @@ function renderMain() {
       });
     });
 
+    // 已完成：展開／收合
+    main.querySelectorAll('[data-donetoggle]').forEach(h => {
+      h.addEventListener('click', () => { window.__doneOpen = !window.__doneOpen; renderMain(); });
+    });
+    // 已完成：清除全部（可復原）
+    main.querySelectorAll('[data-cleardone]').forEach(b => {
+      b.addEventListener('click', () => {
+        const arr = getItems('todo');
+        const gone = arr.filter(x => x.completed);
+        if (!gone.length) return;
+        for (let i = arr.length - 1; i >= 0; i--) if (arr[i].completed) arr.splice(i, 1);
+        saveData();
+        renderMain();
+        showUndo(`已清除 ${gone.length} 筆已完成`, () => { arr.push(...gone); saveData(); renderMain(); });
+      });
+    });
+
     // 象限切換（點編號循環 1→2→3→4）
     main.querySelectorAll('.q-badge').forEach(b => {
       b.addEventListener('click', e => {
@@ -1353,10 +1459,15 @@ function renderMain() {
         // 注意：收支頁的 items 是當月過濾後的複本，splice 它不會刪到資料 → 用 findItemById
         const hit = findItemById(id);
         if (hit) {
-          hit.arr.splice(hit.idx, 1);
+          const removed = hit.arr.splice(hit.idx, 1)[0];
           pendingIds.delete(id);
           saveData();
           renderMain();
+          showUndo(`已刪除「${String((removed && removed.text) || '').slice(0, 10)}」`, () => {
+            hit.arr.splice(Math.min(hit.idx, hit.arr.length), 0, removed);
+            saveData();
+            renderMain();
+          });
         }
       });
     });
@@ -1389,6 +1500,11 @@ function renderMain() {
       });
     }
   }
+}
+
+// 去掉舊版自動加在開頭的日期（顯示時才去掉，不動原始資料）
+function stripDiaryDate(text) {
+  return String(text || '').replace(/^\s*\d{1,2}-\d{1,2}\s*(?:上午|下午)?\s*\d{0,2}:?\d{0,2}\s*\n?/, '');
 }
 
 function renderItem(cat, it) {
@@ -1427,8 +1543,9 @@ function renderItem(cat, it) {
       <li class="todo-li${it.completed ? ' is-done' : ''}">
         <span class="todo-check ${it.completed?'done':''}" data-id="${it.id}">✓</span>
         <span class="todo-text ${it.completed?'done':''}" style="flex:1"><span class="todo-marker">▸</span>${escHtml(it.text)}</span>
-        <button class="q-badge q${q}" data-id="${it.id}" title="切換象限">${q}</button>
-        <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
+        ${it.due ? `<span class="due-chip" title="截止日">截止 ${escHtml(it.due)}</span>` : ''}
+        <button class="q-badge q${q}" data-id="${it.id}" title="優先級：1 重要且緊急 / 2 重要不緊急 / 3 緊急不重要 / 4 不重要不緊急（點一下切換）">${q}</button>
+        <span class="todo-date" title="建立日期">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>
       </li>`;
@@ -1437,7 +1554,7 @@ function renderItem(cat, it) {
     return `
     <li class="diary-li" data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI.bgStyle(it)}">
       <span style="flex:1;${window.DiaryUI.sizeStyle(it)}">
-        ${window.DiaryUI.lineHtml(it.text)}
+        ${window.DiaryUI.lineHtml(stripDiaryDate(it.text))}
         ${window.DiaryUI.extras(it)}
       </span>
       <span class="diary-date-out">${it.date||''}</span>

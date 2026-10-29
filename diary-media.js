@@ -161,7 +161,7 @@
     restoreDraft();
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
-      inputEl.addEventListener("input", e => { liveText = e.target.value; scheduleSave(); });
+      inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; scheduleSave(); });
       inputEl.addEventListener("blur", saveDraftNow);
     }
     window.addEventListener("pagehide", saveDraftNow);
@@ -182,6 +182,8 @@
   const DRAFT_KEY = "diary.draft.v1";
   let saveTimer = null;
   let liveText = "";   // 即時緩衝：畫面重繪也不會丟字
+  let touched = false;  // 使用者是否真的動過（避免空白時誤建／誤刪）
+  let suppressSave = false;
   function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraftNow, 400); }
   function saveDraftNow() {
     try {
@@ -190,10 +192,16 @@
       if (domText) liveText = domText;
       const text = liveText;
       const hasAny = text.trim() || (draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length)));
-      if (!hasAny) { localStorage.removeItem(DRAFT_KEY); markSaved(""); return; }
+      if (!hasAny) {
+        localStorage.removeItem(DRAFT_KEY);
+        markSaved("");
+        if (touched && window.__ppDiaryUpsert) window.__ppDiaryUpsert("", null);   // 清空 → 收掉這筆
+        return;
+      }
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, d: draft || empty(), at: Date.now() }));
       const d = new Date();
       markSaved("已存 " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()));
+      if (window.__ppDiaryUpsert && !suppressSave) window.__ppDiaryUpsert(text, draft);   // 隨寫隨存進同一筆
     } catch (e) {}
   }
   function restoreDraft() {
@@ -213,6 +221,22 @@
       if (inputEl && inputEl.value) inputEl.dispatchEvent(new Event("input", { bubbles: true }));
     }
   }
+  // 把「正在寫的那筆」載回輸入框（從資料還原）
+  const stripStamp = s => String(s || "").replace(/^\s*\d{1,2}-\d{1,2}\s*(?:上午|下午)?\s*\d{0,2}:?\d{0,2}\s*\n?/, "");
+
+  function loadEntry(item) {
+    if (!item) return;
+    suppressSave = true;
+    liveText = stripStamp(item.text || "");
+    if (inputEl && inputEl.value !== liveText) inputEl.value = liveText;
+    draft = {
+      images: item.images || [], audio: item.audio || null, sketch: item.sketch || null,
+      rows: item.rows || [], bg: item.bg || "none", size: item.size || ""
+    };
+    paint();
+    setTimeout(() => { suppressSave = false; }, 600);
+  }
+
   function markSaved(msg) {
     const el = document.getElementById("dtSaved");
     if (el) el.textContent = msg || "";
@@ -241,6 +265,7 @@
   const toDataURL = b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); });
 
   async function addImages(files) {
+    touched = true;
     for (const f of files) {
       if (!/^image\//.test(f.type)) continue;
       try {
@@ -252,6 +277,7 @@
       } catch (e) { toast("圖片處理失敗"); }
     }
     paint();
+    if (window.__ppDiaryRerender) window.__ppDiaryRerender();
   }
 
   let rec = null, chunks = [], recAt = 0;
@@ -266,8 +292,10 @@
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
         const id = uid();
         await putBlob(id, blob);
+        touched = true;
         draft.audio = { id, dur: Math.round((Date.now() - recAt) / 1000), type: blob.type };
         rec = null; paint();
+        if (window.__ppDiaryRerender) window.__ppDiaryRerender();
       };
       rec.start(); paint();
     } catch (e) { toast("麥克風被拒絕或不可用"); }
@@ -333,6 +361,7 @@
           sm.getContext("2d").drawImage(cv, 0, 0, sm.width, sm.height);
           draft.sketch = { id, thumb: sm.toDataURL("image/jpeg", 0.65) };
           paint();
+          if (window.__ppDiaryRerender) window.__ppDiaryRerender();
         } catch (e) { toast("儲存失敗"); }
         wrap.remove();
       }, "image/png");
@@ -523,5 +552,5 @@
     clearTimeout(tt); tt = setTimeout(() => el.classList.remove("on"), 1900);
   }
 
-  window.DiaryUI = { mount, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
+  window.DiaryUI = { mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
 })();
