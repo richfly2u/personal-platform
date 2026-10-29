@@ -1195,6 +1195,41 @@ function hideDashboard() {
   document.getElementById('main').style.display = '';
 }
 
+// 編輯一筆：日記載入上方輸入框並回到最上方；其他類別開啟行內編輯表單
+function doEditItem(id) {
+  if (!id) return;
+  if (currentTab === 'diary' && window.DiaryUI) {
+    diaryCurId = id;
+    try { localStorage.setItem('diary.currentId', id); } catch (e) {}
+    editingId = null;
+    renderMain();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const box = document.querySelector('.diary-box');
+    if (box) box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const ta = document.getElementById('addText');
+    if (ta) {
+      ta.focus({ preventScroll: true });
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+    return;
+  }
+  editingId = id;
+  renderMain();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const ef = document.getElementById('editText') || document.querySelector('.edit-form');
+  if (ef) setTimeout(() => ef.scrollIntoView({ block: 'center', behavior: 'smooth' }), 30);
+}
+
+// 事件代理：任何情況下鉛筆都有效
+if (!window.__editDelegated) {
+  window.__editDelegated = true;
+  document.addEventListener('click', e => {
+    const ed = e.target && e.target.closest ? e.target.closest('.edit-btn') : null;
+    if (!ed || ed.__boundEdit) return;
+    doEditItem(ed.dataset.id);
+  });
+}
+
 function renderMain() {
   const main = document.getElementById('main');
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
@@ -1486,25 +1521,8 @@ function renderMain() {
     });
     // 編輯（itemList 收入 + 分類明細支出）
     main.querySelectorAll('.edit-btn').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = el.dataset.id;
-        if (currentTab === 'diary' && window.DiaryUI) {      // 日記：用原本的輸入框＋工具列來編輯
-          diaryCurId = id;
-          try { localStorage.setItem('diary.currentId', id); } catch (e) {}
-          editingId = null;
-          renderMain();
-          const ta = document.getElementById('addText');
-          if (ta) {
-            ta.focus();
-            ta.setSelectionRange(ta.value.length, ta.value.length);
-            const box = ta.closest('.diary-box') || ta;
-            box.scrollIntoView({ block: 'start', behavior: 'smooth' });
-          }
-          return;
-        }
-        editingId = id;
-        renderMain();
-      });
+      el.__boundEdit = true;
+      el.addEventListener('click', () => doEditItem(el.dataset.id));
     });
     // 刪除（itemList 收入 + 分類明細支出）
     main.querySelectorAll('.del-btn').forEach(el => {
