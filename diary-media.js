@@ -55,8 +55,8 @@
     const s = document.createElement("style");
     s.id = "dmed-style";
     s.textContent = `
-.dt-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 2px 2px}
-.dt-btn{border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 4px;font-size:.75rem;color:var(--text);white-space:nowrap;text-align:center}
+.dt-bar{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;padding:8px 2px 2px}
+.dt-btn{border:1px solid var(--border);background:var(--card);border-radius:9px;padding:9px 0;font-size:1.05rem;line-height:1;color:var(--text);text-align:center}
 .dt-btn.rec{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;font-weight:600}
 .dt-draft{font-size:.8rem;color:var(--text2)}
 .dt-imgs{display:flex;gap:6px;overflow-x:auto;padding:6px 0}
@@ -119,14 +119,14 @@
     toolsEl = document.createElement("div");
     toolsEl.innerHTML = `
       <div class="dt-bar">
-        <button type="button" class="dt-btn" data-dt="photo">📷 照片</button>
-        <button type="button" class="dt-btn" data-dt="rec">🎤 錄音</button>
-        <button type="button" class="dt-btn" data-dt="dict">🗣 聽寫</button>
-        <button type="button" class="dt-btn" data-dt="emoji">😊 表情</button>
-        <button type="button" class="dt-btn" data-dt="bg">🎨 背景</button>
-        <button type="button" class="dt-btn" data-dt="rows">☑ 明細</button>
-        <button type="button" class="dt-btn" data-dt="sketch">✏️ 手寫</button>
-        <button type="button" class="dt-btn" data-dt="size">Aa 字級</button>
+        <button type="button" class="dt-btn" data-dt="photo" title="照片" aria-label="照片">📷</button>
+        <button type="button" class="dt-btn" data-dt="rec" title="錄音" aria-label="錄音">🎤</button>
+        <button type="button" class="dt-btn" data-dt="dict" title="聽寫" aria-label="聽寫">🗣</button>
+        <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">😊</button>
+        <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">🎨</button>
+        <button type="button" class="dt-btn" data-dt="rows" title="明細勾選" aria-label="明細勾選">☑</button>
+        <button type="button" class="dt-btn" data-dt="sketch" title="手寫" aria-label="手寫">✏️</button>
+        <button type="button" class="dt-btn" data-dt="size" title="字級" aria-label="字級">Aa</button>
       </div>
       <div class="dt-draft" id="dtDraft"></div>
       <div class="dt-pop" id="dtPop"></div>
@@ -274,7 +274,7 @@
     }
     d.innerHTML = h;
     const rb = toolsEl.querySelector('[data-dt="rec"]');
-    if (rb) { rb.textContent = rec ? "⏹ 停止錄音" : "🎤 錄音"; rb.classList.toggle("rec", !!rec); }
+    if (rb) { rb.textContent = rec ? "⏹" : "🎤"; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
   }
 
   function onClick(e) {
