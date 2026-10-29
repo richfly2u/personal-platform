@@ -642,6 +642,25 @@ function hideUndo() {
   undoState = null;
 }
 
+// 日記「寫完了，換下一則」：收好這一筆，清空輸入框開新的一筆
+window.__ppDiaryFinish = function () {
+  try {
+    const arr = getItems('diary');
+    const it = arr.find(x => x.id === diaryCurId);
+    if (it) {
+      const hasContent = String(it.text || '').trim() || (it.images || []).length || it.audio || it.sketch || (it.rows || []).length;
+      if (!hasContent) { const i = arr.indexOf(it); if (i >= 0) arr.splice(i, 1); }
+      saveData();
+    }
+    diaryCurId = null;
+    try { localStorage.removeItem('diary.currentId'); } catch (e) {}
+    if (window.DiaryUI) window.DiaryUI.clearDraft();
+    renderMain();
+    const ta = document.getElementById('addText');
+    if (ta) { ta.focus(); ta.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+  } catch (e) {}
+};
+
 window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
 
 window.__ppDiaryUpsert = function (text, extras) {
@@ -1052,14 +1071,14 @@ function renderHome() {
     <section class="tab-content active">
       <div class="home-top">
         <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v${APP_VERSION}</small></h2>
-        <div class="home-links">
-          <button class="home-link utility-link" type="button" onclick="openGlobalSearch()">🔎 搜尋</button>
+        <button class="home-search utility-link" type="button" onclick="openGlobalSearch()" title="搜尋">🔎 搜尋</button>
+      </div>
+      <div class="home-links">
           <button class="home-link utility-link" type="button" onclick="exportBackup()">⬇ 備份</button>
           <button class="home-link utility-link" type="button" onclick="importBackup()">↥ 還原</button>
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🛕凱德</a>
-        </div>
       </div>
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">

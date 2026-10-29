@@ -164,7 +164,12 @@
     restoreDraft();
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
-      inputEl.addEventListener("input", e => { liveText = e.target.value; touched = true; autoSizeTa(); scheduleSave(); });
+      inputEl.addEventListener("input", e => {
+        liveText = e.target.value; touched = true; autoSizeTa();
+        const nr = document.querySelector(".dt-next-row");
+        if (nr) nr.style.display = liveText.trim() ? "" : "none";
+        scheduleSave();
+      });
       window.addEventListener("resize", autoSizeTa);
       inputEl.addEventListener("blur", () => { saveDraftNow(); if (window.__ppDiaryRerender) window.__ppDiaryRerender(); });
     }
@@ -262,8 +267,11 @@
   function clearDraft() {
     clearTimeout(saveTimer);
     liveText = "";
+    draft = { images: [], audio: null, sketch: null, rows: [], bg: "none", size: "" };
+    if (inputEl) inputEl.value = "";
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
     markSaved("");
+    if (toolsEl) { try { paint(); } catch (e) {} }
   }
 
   function imgFromFile(file, maxSide, q) {
@@ -408,6 +416,9 @@
         `<div class="dt-total"><span>合計 <b id="dtTotal">NT$${rowsTotal().toLocaleString()}</b></span>
           <button type="button" class="dt-add" data-addrow="1">＋ 加一項</button></div></div>`;
     }
+    // 有內容時提供「寫下一則」：把這筆收好，換新的空白一則
+    const hasContent = String(liveText || "").trim() || draft.images.length || draft.audio || draft.sketch || draft.rows.length;
+    h += `<div class="dt-next-row"${hasContent ? "" : ' style="display:none"'}><button type="button" class="dt-next" data-dt-next="1">✓ 寫完了，換下一則</button></div>`;
     d.innerHTML = h;
     // 輸入框內的錄音播放器：接上 blob 並顯示正確秒數
     const pv = d.querySelector("[data-preview-audio]");
@@ -455,6 +466,10 @@
   function onClick(e) {
     const t = e.target;
     if (t.dataset.delimg) { draft.images = draft.images.filter(x => x.id !== t.dataset.delimg); delBlob(t.dataset.delimg); paint(); return; }
+    if (t.dataset.dtNext !== undefined && t.closest("[data-dt-next]")) {
+      if (window.__ppDiaryFinish) window.__ppDiaryFinish();
+      return;
+    }
     if (t.dataset.delaudio) { if (draft.audio) delBlob(draft.audio.id); draft.audio = null; paint(); return; }
     if (t.dataset.delsketch) { if (draft.sketch) delBlob(draft.sketch.id); draft.sketch = null; paint(); return; }
     if (t.dataset.addrow) { draft.rows.push({ name: "", qty: 1, amount: 0 }); paint(); return; }

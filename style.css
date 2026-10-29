@@ -1676,3 +1676,66 @@ input:focus, textarea:focus, select:focus {
   text-overflow: ellipsis;
 }
 #nav .nav-btn.add-cat-btn .nvi { font-size: 1.15rem; }
+
+
+/* === 首頁頂部：標題＋搜尋同一排；捷徑單排不換行 === */
+.home-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.home-top h2 {
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-search {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-size: .78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.home-links {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0 4px;
+  margin-top: 8px;
+}
+.home-links::-webkit-scrollbar { display: none; }
+.home-links .home-link {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: .72rem;
+  padding: 5px 9px;
+}
+@media (max-width: 390px) {
+  .home-top { flex-direction: row; align-items: center; }
+  .home-links { flex-wrap: nowrap; }
+}
+
+/* 日記：換下一則 */
+.dt-next-row { display: flex; justify-content: flex-start; margin: 4px 0 0; }
+.dt-next {
+  border: 0;
+  background: transparent;
+  color: var(--text2);
+  font-size: .72rem;
+  padding: 4px 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
