@@ -166,11 +166,15 @@
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
       inputEl.addEventListener("input", e => {
         liveText = e.target.value; touched = true; autoSizeTa();
-        const nr = document.querySelector(".dt-next-row");
-        if (nr) nr.style.display = liveText.trim() ? "" : "none";
+        clearTimeout(detachTimer);
+        if (!liveText.trim() && !draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length) {
+          detachTimer = setTimeout(() => { if (window.__ppDiaryUpsert) window.__ppDiaryUpsert("", null); }, 900);
+        }
         scheduleSave();
       });
       window.addEventListener("resize", autoSizeTa);
+      // 新增或編輯：一聚焦輸入框就把畫面帶到最上頭
+      inputEl.addEventListener("focus", () => { if (window.__ppScrollTop) window.__ppScrollTop(); });
       inputEl.addEventListener("blur", () => { saveDraftNow(); if (window.__ppDiaryRerender) window.__ppDiaryRerender(); });
     }
     window.addEventListener("pagehide", saveDraftNow);
@@ -190,6 +194,7 @@
   // ---------- 隨寫隨存 ----------
   const DRAFT_KEY = "diary.draft.v1";
   let saveTimer = null;
+  let detachTimer = null;   // 清空後延遲收筆，下一句自動開新的一則
   let liveText = "";   // 即時緩衝：畫面重繪也不會丟字
   let touched = false;  // 使用者是否真的動過（避免空白時誤建／誤刪）
   let suppressSave = false;
@@ -264,9 +269,15 @@
     setTimeout(() => { suppressSave = false; editingLoad = false; }, 700);
   }
 
+  let savedTimer = null;
   function markSaved(msg) {
     const el = document.getElementById("dtSaved");
-    if (el) el.textContent = msg || "";
+    if (!el) return;
+    if (msg === "") { el.textContent = ""; el.classList.remove("on"); return; }
+    el.textContent = "✓ 已儲存";
+    el.classList.add("on");
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => el.classList.remove("on"), 1600);
   }
   function clearDraft() {
     clearTimeout(saveTimer);
@@ -420,9 +431,6 @@
         `<div class="dt-total"><span>合計 <b id="dtTotal">NT$${rowsTotal().toLocaleString()}</b></span>
           <button type="button" class="dt-add" data-addrow="1">＋ 加一項</button></div></div>`;
     }
-    // 有內容時提供「寫下一則」：把這筆收好，換新的空白一則
-    const hasContent = String(liveText || "").trim() || draft.images.length || draft.audio || draft.sketch || draft.rows.length;
-    h += `<div class="dt-next-row"${hasContent ? "" : ' style="display:none"'}><button type="button" class="dt-next" data-dt-next="1">✓ 寫完了，換下一則</button></div>`;
     d.innerHTML = h;
     // 輸入框內的錄音播放器：接上 blob 並顯示正確秒數
     const pv = d.querySelector("[data-preview-audio]");

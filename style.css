@@ -1001,7 +1001,13 @@ li.diary-li { position: relative; margin-bottom: 22px; }
   min-height: 14px;
 }
 #diaryTools .dt-stamp { font-variant-numeric: tabular-nums; opacity: 0.9; }
-#diaryTools .dt-saved { padding: 0; min-height: 0; font-size: 0.68rem; }
+#diaryTools .dt-saved {
+  padding: 0; min-height: 0; font-size: 0.68rem;
+  color: #16a34a; opacity: 0; transform: translateY(2px);
+  transition: opacity .28s ease, transform .28s ease;
+  display: inline-flex; align-items: center; gap: 3px; letter-spacing: .2px;
+}
+#diaryTools .dt-saved.on { opacity: .9; transform: translateY(0); }
 
 .add-form input,
 .add-form textarea {

@@ -1207,6 +1207,15 @@ function hideDashboard() {
   document.getElementById('main').style.display = '';
 }
 
+// 日記：新增或編輯時，畫面一律滾到最上頭，讓輸入框完整可見
+window.__ppScrollTop = function () {
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const box = document.querySelector('.diary-box');
+    if (box) box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } catch (e) {}
+};
+
 // 編輯一筆：日記載入上方輸入框並回到最上方；其他類別開啟行內編輯表單
 function doEditItem(id) {
   if (!id) return;
@@ -1215,9 +1224,7 @@ function doEditItem(id) {
     try { localStorage.setItem('diary.currentId', id); } catch (e) {}
     editingId = null;
     renderMain();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    const box = document.querySelector('.diary-box');
-    if (box) box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    if (window.__ppScrollTop) window.__ppScrollTop();
     const ta = document.getElementById('addText');
     if (ta) {
       ta.focus({ preventScroll: true });
