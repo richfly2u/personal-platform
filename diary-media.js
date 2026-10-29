@@ -98,8 +98,8 @@
 .dt-pop button.on{border-color:var(--accent);font-weight:600}
 .diary-imgs{display:flex;gap:6px;overflow-x:auto;margin-top:8px}
 .diary-imgs img{width:96px;height:96px;object-fit:cover;border-radius:9px;border:1px solid var(--border);cursor:zoom-in;background:#0001}
-.diary-audio{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.75rem;color:var(--text2)}
-.diary-audio audio{flex:1;min-width:150px;height:34px}
+.diary-audio{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:8px;font-size:.75rem;color:var(--text2);width:100%}
+.diary-audio audio{flex:1 1 100%;width:100%;min-width:0;height:34px}
 .diary-audio .adur{flex:0 0 auto;font-variant-numeric:tabular-nums}
 .diary-rows{margin-top:8px;border-top:1px dashed var(--border);padding-top:6px;font-size:.82rem}
 .diary-check{display:flex;align-items:center;gap:8px;padding:3px 0}
@@ -136,6 +136,7 @@
     if (formEl.querySelector(".dt-bar")) { paint(); return; }
     toolsEl = document.createElement("div");
     toolsEl.innerHTML = `
+      <div class="dt-draft" id="dtDraft"></div>
       <div class="dt-bar">
         <button type="button" class="dt-btn" data-dt="size" title="字級" aria-label="字級"><span class="dt-aa">Aa</span></button>
         <button type="button" class="dt-btn" data-dt="rows" title="明細勾選" aria-label="明細勾選">${IC.check}</button>
@@ -146,7 +147,6 @@
         <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">${IC.smile}</button>
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
-      <div class="dt-draft" id="dtDraft"></div>
       <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span></div>
       <div class="dt-pop" id="dtPop"></div>
       <input type="file" id="dtFile" accept="image/*" multiple style="display:none">`;
@@ -229,10 +229,13 @@
     suppressSave = true;
     liveText = stripStamp(item.text || "");
     if (inputEl && inputEl.value !== liveText) inputEl.value = liveText;
-    draft = {
-      images: item.images || [], audio: item.audio || null, sketch: item.sketch || null,
-      rows: item.rows || [], bg: item.bg || "none", size: item.size || ""
-    };
+    const itemHasMedia = (item.images || []).length || item.audio || item.sketch || (item.rows || []).length;
+    if (itemHasMedia || !draft || (!draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length)) {
+      draft = {
+        images: item.images || [], audio: item.audio || null, sketch: item.sketch || null,
+        rows: item.rows || [], bg: item.bg || "none", size: item.size || ""
+      };
+    }
     paint();
     setTimeout(() => { suppressSave = false; }, 600);
   }
@@ -276,6 +279,7 @@
         draft.images.push({ id, thumb: await toDataURL(sm.blob), w: big.w, h: big.h });
       } catch (e) { toast("圖片處理失敗"); }
     }
+    if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
     paint();
     if (window.__ppDiaryRerender) window.__ppDiaryRerender();
   }
@@ -293,8 +297,10 @@
         const id = uid();
         await putBlob(id, blob);
         touched = true;
-        draft.audio = { id, dur: Math.round((Date.now() - recAt) / 1000), type: blob.type };
-        rec = null; paint();
+        draft.audio = { id, dur: Math.max(1, Math.round((Date.now() - recAt) / 1000)), type: blob.type };
+        rec = null;
+        if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+        paint();
         if (window.__ppDiaryRerender) window.__ppDiaryRerender();
       };
       rec.start(); paint();
@@ -360,6 +366,7 @@
           sm.width = 280; sm.height = Math.round(280 * cv.height / cv.width);
           sm.getContext("2d").drawImage(cv, 0, 0, sm.width, sm.height);
           draft.sketch = { id, thumb: sm.toDataURL("image/jpeg", 0.65) };
+          if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
           paint();
           if (window.__ppDiaryRerender) window.__ppDiaryRerender();
         } catch (e) { toast("儲存失敗"); }
@@ -453,7 +460,7 @@
     let h = "";
     if (it.images && it.images.length) h += `<div class="diary-imgs">${it.images.map(m => `<img data-mid="${m.id}" src="${m.thumb}" alt="">`).join("")}</div>`;
     if (it.sketch) h += `<div class="diary-imgs"><img data-mid="${it.sketch.id}" src="${it.sketch.thumb}" alt="手寫"></div>`;
-    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}"><span class="adur">🔊 ${it.audio.dur || 0} 秒</span><audio controls preload="metadata" style="flex:1;min-width:150px;height:34px"></audio></div>`;
+    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}" data-dur="${it.audio.dur || 0}"><span class="adur">🔊 ${it.audio.dur || 0} 秒</span><audio controls preload="metadata"></audio></div>`;
     if (it.rows && it.rows.length) {
       const tot = it.rows.reduce((s, r) => s + (Number(r.amount) || 0) * (Number(r.qty) || 1), 0);
       h += `<div class="diary-rows">${it.rows.map((r, i) => `<div class="diary-check ${r.done ? "done" : ""}" data-check="${i}">
@@ -491,10 +498,32 @@
       const blob = await getBlob(el.dataset.aid);
       if (!blob) { if (dur) dur.textContent = "音檔不存在"; return; }
       au.src = URL.createObjectURL(blob);
+      const stored = Number(el.dataset.dur || 0);          // 錄音時自己計的秒數
+      const fmt = sec => {
+        const s = Math.max(0, Math.floor(sec));   // 與瀏覽器播放器顯示一致（取整數秒）
+        if (s < 3600) return "🔊 " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        return "🔊 " + Math.floor(s / 3600) + ":" + String(Math.floor((s % 3600) / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+      };
+      if (dur) dur.textContent = fmt(stored || 0);
+      // 只信「自己計時的秒數」；瀏覽器回報的怪值（webm 常見 Infinity 或錯超大值）不採用
+      const useDuration = d => {
+        if (!dur || !isFinite(d) || d <= 0) return;
+        if (stored > 0 && Math.abs(d - stored) > 5) return;
+        dur.textContent = fmt(d);
+      };
       au.addEventListener("loadedmetadata", () => {
-        const s = Math.round(au.duration || 0);
-        if (dur && s) dur.textContent = "🔊 " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+        // webm 常見 duration = Infinity：先 seek 到極大值逼出真實長度
+        if (!isFinite(au.duration)) {
+          const fix = () => {
+            if (isFinite(au.duration) && au.duration > 0) { au.removeEventListener("timeupdate", fix); au.currentTime = 0; useDuration(au.duration); }
+          };
+          au.addEventListener("timeupdate", fix);
+          try { au.currentTime = 1e101; } catch (e) {}
+        } else {
+          useDuration(au.duration);
+        }
       });
+      au.addEventListener("ended", () => { if (au.duration && isFinite(au.duration)) useDuration(au.duration); });
       au.addEventListener("error", () => { if (dur) dur.textContent = "無法播放"; });
     });
     root.querySelectorAll("img[data-mid]").forEach(img => {
