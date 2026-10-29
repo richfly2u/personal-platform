@@ -558,7 +558,7 @@
         if (s < 3600) return "🔊 " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
         return "🔊 " + Math.floor(s / 3600) + ":" + String(Math.floor((s % 3600) / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
       };
-      if (dur) dur.textContent = fmt(stored || 0);
+      if (dur) dur.textContent = (stored > 0 && stored < 3600) ? fmt(stored) : "🔊 錄音";
       // 只信「自己計時的秒數」；瀏覽器回報的怪值（webm 常見 Infinity 或錯超大值）不採用
       const useDuration = d => {
         if (!dur || !isFinite(d) || d <= 0) return;
