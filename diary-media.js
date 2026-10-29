@@ -195,6 +195,7 @@
   let suppressSave = false;
   function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveDraftNow, 400); }
   function saveDraftNow() {
+    if (editingLoad) return;   // 載入編輯中，不要把空白寫回去
     try {
       const ta = document.querySelector("#addText");
       const domText = ta ? ta.value : (inputEl ? inputEl.value : "");
@@ -204,7 +205,7 @@
       if (!hasAny) {
         localStorage.removeItem(DRAFT_KEY);
         markSaved("");
-        if (touched && window.__ppDiaryUpsert) window.__ppDiaryUpsert("", null);   // 清空 → 收掉這筆
+        if (touched && !editingLoad && window.__ppDiaryUpsert) window.__ppDiaryUpsert("", null);   // 使用者真的清空才收掉這筆
         return;
       }
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, d: draft || empty(), at: Date.now() }));
@@ -243,8 +244,11 @@
 
   const stripStamp = s => String(s || "").replace(/^\s*\d{1,2}-\d{1,2}\s*(?:上午|下午)?\s*\d{0,2}:?\d{0,2}\s*\n?/, "");
 
+  let editingLoad = false;   // 正在把某一筆載入編輯框，期間不自動存檔（避免空白覆蓋）
   function loadEntry(item) {
     if (!item) return;
+    editingLoad = true;
+    clearTimeout(saveTimer);
     suppressSave = true;
     liveText = stripStamp(item.text || "");
     if (inputEl && inputEl.value !== liveText) inputEl.value = liveText;
@@ -257,7 +261,7 @@
       };
     }
     paint();
-    setTimeout(() => { suppressSave = false; }, 600);
+    setTimeout(() => { suppressSave = false; editingLoad = false; }, 700);
   }
 
   function markSaved(msg) {
