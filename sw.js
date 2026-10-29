@@ -1,6 +1,6 @@
 /* === Service Worker === */
-const CACHE = 'personal-platform-v33';
-const URLS = ['index.html', 'style.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const CACHE = 'personal-platform-v35';
+const URLS = ['index.html', 'style.css', 'app.js', 'habits.js', 'diary-media.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)).then(() => self.skipWaiting()));

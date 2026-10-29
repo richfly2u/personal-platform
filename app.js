@@ -89,7 +89,8 @@ function restoreNav() {
     if (s) {
       if (typeof s.currentTab === 'string') currentTab = s.currentTab;
       // 若存的頁面已不存在（如已撤銷的便利貼 sticky）→ 退回第一個類別
-      if (!appData.categories.some(c => c.id === currentTab)) currentTab = (appData.categories[0] || {}).id || 'todo';
+      // habits 是模組頁（不在 categories 內）
+      if (currentTab !== 'habits' && !appData.categories.some(c => c.id === currentTab)) currentTab = (appData.categories[0] || {}).id || 'todo';
       homeOpen = !!s.homeOpen;
       dashboardOpen = !!s.dashboardOpen;
     }
@@ -145,6 +146,16 @@ function getItems(catId) {
 
 // 依 id 找出項目真正所在的陣列
 // （收支頁渲染用的 items 是「當月過濾後的複本」，對它 splice 不會刪到資料）
+// 供日記明細勾選回寫用
+window.__ppFindItem = function (id) {
+  for (const key of Object.keys(appData.items || {})) {
+    const arr = appData.items[key] || [];
+    const hit = arr.find(x => x.id === id);
+    if (hit) return hit;
+  }
+  return null;
+};
+
 function findItemById(id) {
   for (const catId of Object.keys(appData.items)) {
     const arr = appData.items[catId];
@@ -571,7 +582,12 @@ function submitAddText() {
     newId = addExpense(text, parseAmount(text));
   } else {
     newId = uid();
-    getItems(cat.id).unshift({id: newId, text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false});
+    const item = {id: newId, text, date: cat.id === 'diary' ? nowStamp() : today(), source: 'manual', completed: false};
+    // 日記附件（照片／錄音／手寫／背景／明細）
+    if (cat.id === 'diary' && window.DiaryUI && window.DiaryUI.hasDraft()) {
+      Object.assign(item, window.DiaryUI.takeDraft());
+    }
+    getItems(cat.id).unshift(item);
   }
   // 先顯示在輸入框下方的「剛新增」區，重新整理後才歸位
   if (newId) pendingIds.add(newId);
@@ -747,6 +763,12 @@ function renderAll() {
   renderNav();
   if (homeOpen) {
     renderHome();
+  } else if (dashboardOpen) {
+    // 舊版 iframe 儀表板：自行處理顯示
+  } else if (currentTab === 'habits' && window.Habits) {
+    document.getElementById('main').style.display = '';
+    window.Habits.onOldDashboard(showDashboard);   // 模組內「舊版儀表板」按鈕
+    window.Habits.render(document.getElementById('main'));
   } else if (!dashboardOpen) {
     renderMain();
   }
@@ -848,8 +870,18 @@ async function fetchHabitStats() {
   }
 }
 
+// 本機習慣摘要（原生模組）；沒有本機習慣才退回舊雲端儀表板數字
+function homeHabitHtml() {
+  if (!window.Habits) return '<div class="home-line">讀取中…</div>';
+  const s = window.Habits.summary();
+  if (!s.habits) return '<div class="home-line">尚未建立習慣，點一下開始</div>';
+  return `<div class="habit-row"><span>今天完成</span><b>${s.done} / ${s.total}</b></div>
+       <div class="habit-row"><span>今日進度</span><b>${s.rate}%</b></div>`;
+}
+
 async function refreshHabitStats() {
   if (!document.getElementById('habitStats')) return;
+  if (window.Habits && window.Habits.summary().habits > 0) return;   // 有本機習慣就不打 Firestore
   const d = await fetchHabitStats();
   const box = document.getElementById('habitStats');   // 重取：非同步期間畫面可能已重繪
   if (!box) return;
@@ -905,7 +937,7 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v62</small></h2>
+        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v64</small></h2>
         <div class="home-links">
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
@@ -943,9 +975,9 @@ function renderHome() {
           <div class="home-card-title">💡 靈感</div>
           <div class="home-line">${lastIdea ? escHtml((lastIdea.text || '').slice(0, 14)) : '尚無靈感'}</div>
         </div>
-        <div class="home-card" onclick="goDashboard()">
-          <div class="home-card-title">📊 養成好習慣</div>
-          <div id="habitStats"><div class="home-line">讀取中…</div></div>
+        <div class="home-card" onclick="goTab('habits')">
+          <div class="home-card-title">📊 習慣</div>
+          <div id="habitStats">${homeHabitHtml()}</div>
         </div>
       </div>
     </section>`;
@@ -985,7 +1017,7 @@ function renderNav() {
     </button>
   `).join('') + `
     <button class="nav-btn add-cat-btn" title="新增類別">＋</button>
-    <button class="nav-btn dash-btn ${dashboardOpen?'active':''}" id="dashBtn" title="養成好習慣（每日行動儀表板）">📊 習慣</button>`;
+    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡">📊 習慣</button>`;
 
   const homeBtn = document.getElementById('homeBtn');
   if (homeBtn) homeBtn.addEventListener('click', goHome);
@@ -1000,17 +1032,11 @@ function renderNav() {
     addCategory();
   });
 
-  // 養成好習慣：iframe 內嵌顯示，保留底部導航
+  // 習慣：走 data-tab="habits"（原生模組，由 renderAll 接手）；舊版 iframe 由模組內按鈕開啟
   const dashBtn = document.getElementById('dashBtn');
-  if (dashBtn) {
-    dashBtn.addEventListener('click', () => {
-      if (dashboardOpen) {
-        hideDashboard();
-        renderAll();
-      } else {
-        showDashboard();
-      }
-    });
+  if (dashBtn && !dashBtn.dataset.bound) {
+    dashBtn.dataset.bound = '1';
+    dashBtn.addEventListener('click', () => goTab('habits'));
   }
 }
 
@@ -1207,6 +1233,13 @@ function renderMain() {
   // 綁定事件（新增區：分類頁與首頁共用）
   bindAddForm();
 
+  // 日記：工具列（照片/錄音/語音轉字/表情/背景/明細/手寫/字級）與附件互動
+  if (cat.id === 'diary' && window.DiaryUI) {
+    const af = main.querySelector('.add-form');
+    if (af) window.DiaryUI.mount(af, 'diary');
+    window.DiaryUI.afterRender(main, saveData);   // 含待歸位清單與正式列表
+  }
+
   // 列表事件
   const list = document.getElementById('itemList');
   if (list) {
@@ -1312,6 +1345,18 @@ function renderItem(cat, it) {
         <button class="edit-btn" data-id="${it.id}">✏️</button>
         <button class="del-btn" data-id="${it.id}">🗑</button>
       </li>`;
+  }
+  if (cat.id === 'diary' && window.DiaryUI) {
+    return `
+    <li data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI.bgStyle(it)}">
+      <span style="flex:1;${window.DiaryUI.sizeStyle(it)}">
+        ${window.DiaryUI.lineHtml(it.text)}
+        <span class="meta">${it.date||''}</span>
+        ${window.DiaryUI.extras(it)}
+      </span>
+      <button class="edit-btn" data-id="${it.id}">✏️</button>
+      <button class="del-btn" data-id="${it.id}">🗑</button>
+    </li>`;
   }
   return `
     <li>
