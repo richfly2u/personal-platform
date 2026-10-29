@@ -962,6 +962,7 @@ nav {
   overflow: hidden;
 }
 .diary-box textarea {
+  color: inherit;
   width: 100%;
   border: 0 !important;
   border-radius: 0 !important;
@@ -971,7 +972,17 @@ nav {
   display: block;
   box-sizing: border-box;
 }
-#diaryTools { border-top: 1px solid var(--border); padding: 0 8px 2px; }
+#diaryTools { border-top: 0; padding: 0 8px 2px; }
+/* 日記日期：貼在方框右下外側 */
+li.diary-li { position: relative; margin-bottom: 22px; }
+.diary-date-out {
+  position: absolute;
+  right: 6px;
+  bottom: -17px;
+  font-size: 0.68rem;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
 /* 日期與儲存狀態貼在輸入框右下角 */
 #diaryTools .dt-meta {
   display: flex;

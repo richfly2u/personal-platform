@@ -147,7 +147,7 @@
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
       <div class="dt-draft" id="dtDraft"></div>
-      <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span><span class="dt-stamp" id="dtStamp"></span></div>
+      <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span></div>
       <div class="dt-pop" id="dtPop"></div>
       <input type="file" id="dtFile" accept="image/*" multiple style="display:none">`;
     const host = formEl.querySelector("#diaryTools") || formEl;
@@ -160,8 +160,7 @@
     // ① 自動補日期（聚焦即補），② 隨寫隨存（草稿自動保存／還原）
     restoreDraft();
     if (inputEl) {
-      const stampEl = document.getElementById("dtStamp");
-      if (stampEl) stampEl.textContent = datePrefix();
+      // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
       inputEl.addEventListener("input", e => { liveText = e.target.value; scheduleSave(); });
       inputEl.addEventListener("blur", saveDraftNow);
     }
@@ -361,7 +360,20 @@
     d.innerHTML = h;
     const rb = toolsEl.querySelector('[data-dt="rec"]');
     if (rb) { rb.innerHTML = rec ? IC.stop : IC.mic; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
+    applyBoxBg();
     if (toolsEl) scheduleSave();
+  }
+
+  // 選背景 → 輸入框立刻變色
+  function applyBoxBg() {
+    const box = (toolsEl && toolsEl.closest(".diary-box")) || document.querySelector(".diary-box");
+    if (!box) return;
+    const g = BGS.find(x => x.k === (draft && draft.bg));
+    if (!g || !g.css) { box.style.background = ""; box.style.color = ""; return; }
+    box.style.background = g.css;
+    box.style.color = g.dark ? "#f5f5f5" : "";
+    if (g.dark) box.style.setProperty("--text2", "#e9e9e9");
+    else box.style.removeProperty("--text2");
   }
 
   function onClick(e) {

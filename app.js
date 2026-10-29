@@ -1435,12 +1435,12 @@ function renderItem(cat, it) {
   }
   if (cat.id === 'diary' && window.DiaryUI) {
     return `
-    <li data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI.bgStyle(it)}">
+    <li class="diary-li" data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI.bgStyle(it)}">
       <span style="flex:1;${window.DiaryUI.sizeStyle(it)}">
         ${window.DiaryUI.lineHtml(it.text)}
-        <span class="meta">${it.date||''}</span>
         ${window.DiaryUI.extras(it)}
       </span>
+      <span class="diary-date-out">${it.date||''}</span>
       <button class="edit-btn" data-id="${it.id}">✏️</button>
       <button class="del-btn" data-id="${it.id}">🗑</button>
     </li>`;
