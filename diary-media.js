@@ -81,7 +81,10 @@
 .dt-thumb img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
 .dt-thumb b{position:absolute;top:-6px;right:-6px;background:#3d2c1e;color:#fff;width:18px;height:18px;border-radius:50%;
   display:grid;place-items:center;font-size:11px;cursor:pointer}
-.dt-audio,.dt-sk{margin:6px 0;display:flex;align-items:center;gap:8px}
+.dt-audio{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:6px 0;width:100%}
+.dt-audio .dt-alab{font-variant-numeric:tabular-nums}
+.dt-audio audio{flex:1 1 100%;width:100%;min-width:0;height:34px}
+.dt-sk{margin:6px 0;display:flex;align-items:center;gap:8px}
 .dt-audio button,.dt-sk button{border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:.72rem;background:var(--card);color:var(--text)}
 .dt-rows{border:1px solid var(--border);border-radius:10px;padding:8px;margin:6px 0;background:var(--card)}
 .dt-row{display:flex;gap:6px;margin-bottom:6px}
@@ -392,7 +395,7 @@
     const d = toolsEl.querySelector("#dtDraft");
     let h = "";
     if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
-    if (draft.audio) h += `<div class="dt-audio">🔊 錄音 ${draft.audio.dur || 0} 秒 <button type="button" data-delaudio="1">刪除</button></div>`;
+    if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音 ${draft.audio.dur || 0} 秒</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
     if (draft.sketch) h += `<div class="dt-sk">✏️ 手寫 1 張 <button type="button" data-delsketch="1">刪除</button></div>`;
     if (draft.rows.length) {
       h += `<div class="dt-rows">` + draft.rows.map((r, i) => `
@@ -406,6 +409,31 @@
           <button type="button" class="dt-add" data-addrow="1">＋ 加一項</button></div></div>`;
     }
     d.innerHTML = h;
+    // 輸入框內的錄音播放器：接上 blob 並顯示正確秒數
+    const pv = d.querySelector("[data-preview-audio]");
+    if (pv && draft.audio) {
+      const stored = Number(pv.parentElement.dataset.dur || draft.audio.dur || 0);
+      const label = pv.parentElement.querySelector(".dt-alab");
+      const show = s => {
+        const t = Math.max(0, Math.floor(s));
+        if (label) label.textContent = "🔊 錄音 " + (t < 3600
+          ? Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0")
+          : Math.floor(t / 3600) + ":" + String(Math.floor((t % 3600) / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"));
+      };
+      show(stored);
+      getBlob(draft.audio.id).then(b => {
+        if (!b) return;
+        if (pv.src) { try { URL.revokeObjectURL(pv.src); } catch (e) {} }
+        pv.src = URL.createObjectURL(b);
+        pv.addEventListener("loadedmetadata", () => {
+          if (!isFinite(pv.duration)) {
+            const fix = () => { if (isFinite(pv.duration) && pv.duration > 0) { pv.removeEventListener("timeupdate", fix); pv.currentTime = 0; } };
+            pv.addEventListener("timeupdate", fix);
+            try { pv.currentTime = 1e101; } catch (e) {}
+          }
+        });
+      }).catch(() => {});
+    }
     const rb = toolsEl.querySelector('[data-dt="rec"]');
     if (rb) { rb.innerHTML = rec ? IC.stop : IC.mic; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
     applyBoxBg();

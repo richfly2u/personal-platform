@@ -12,7 +12,7 @@ const BUILTIN_CATEGORIES = [
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '20';
+const APP_VERSION = '55';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -69,14 +69,15 @@ function startAutoSave() {
 async function init() {
   loadData();
   migrateOldData();
-  await loadSyncData();
   setupVoice();
   restoreNav();  // 重整後回到上次的頁面
-  if (dashboardOpen) {
-    showDashboard();
-  } else {
-    renderAll();
-  }
+  // 先顯示本機資料，避免遠端發票服務慢或離線時整個首頁卡住。
+  if (dashboardOpen) showDashboard();
+  else renderAll();
+  loadSyncData().then(() => {
+    // 同步只補資料，不應打斷使用者正在輸入或編輯的畫面。
+    if (!editingId && !document.getElementById('addText')?.value?.trim()) renderAll();
+  }).catch(() => {});
 }
 
 // === 導航狀態讀寫（重整後維持目前頁面）===
@@ -117,7 +118,18 @@ function loadData() {
 }
 
 function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    return true;
+  } catch (e) {
+    // 儲存空間滿、瀏覽器限制或隱私模式失敗時，不讓錯誤中斷整個介面。
+    if (!saveData._warned) {
+      saveData._warned = true;
+      if (typeof showUtilityNotice === 'function') showUtilityNotice('資料未能儲存！請立即匯出備份，並清理裝置儲存空間。', true);
+      else console.error('個人平台資料儲存失敗', e);
+    }
+    return false;
+  }
 }
 
 // 舊格式遷移（v1 → v2）
@@ -188,17 +200,17 @@ function nowStamp() {
 // === 同步資料 ===
 async function loadSyncData() {
   try {
-    // 優先讀 VPS 上的即時發票（/opt/pp-invoice/daily_sync.sh 每天 08:00 自動更新，不用開電腦）
-    // 讀不到（離線／跨域失敗）才退回 repo 內的靜態檔
+    // 優先讀 VPS 即時發票；設定逾時，避免離線時拖住初始化。
+    // 不再把私人發票明細打包進公開網站原始碼；遠端不可用時保留本機既有紀錄即可。
     let invoices = null;
     try {
-      const remote = await fetch(INVOICE_REMOTE_URL, { cache: 'no-store' });
-      if (remote.ok) invoices = await remote.json();
-    } catch (e) { /* 退回本地檔 */ }
-    if (!Array.isArray(invoices)) {
-      const invRes = await fetch('data/invoices.json');
-      if (invRes.ok) invoices = await invRes.json();
-    }
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 3500);
+      try {
+        const remote = await fetch(INVOICE_REMOTE_URL, { cache: 'no-store', signal: ctl.signal });
+        if (remote.ok) invoices = await remote.json();
+      } finally { clearTimeout(timer); }
+    } catch (e) { /* 離線或服務暫時不可用，使用者仍可正常操作本機資料 */ }
     if (Array.isArray(invoices)) {
       const expenseItems = getItems('expense');
       const existingById = new Map(expenseItems.filter(e=>e.source==='invoice').map(e=>[e.id, e]));
@@ -497,7 +509,7 @@ function setupVoice() {
 const POLISH_API = 'https://kindhome.net/api/polish';
 
 // 發票資料來源：VPS 每天 08:00 自動抓（/opt/pp-invoice/daily_sync.sh）
-// → 由 kindhome.net 提供，帶 CORS；讀不到才退回 repo 內的 data/invoices.json
+// → 由 kindhome.net 提供，帶 CORS；不可用時保留本機既有紀錄
 const INVOICE_REMOTE_URL = 'https://kindhome.net/pp_invoices.json';
 
 async function polishText(text, ms) {
@@ -1041,6 +1053,9 @@ function renderHome() {
       <div class="home-top">
         <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v64</small></h2>
         <div class="home-links">
+          <button class="home-link utility-link" type="button" onclick="openGlobalSearch()">🔎 搜尋</button>
+          <button class="home-link utility-link" type="button" onclick="exportBackup()">⬇ 備份</button>
+          <button class="home-link utility-link" type="button" onclick="importBackup()">↥ 還原</button>
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🛕凱德</a>
@@ -1642,6 +1657,117 @@ function addCategory() {
   renderAll();
 }
 
+// === 全站搜尋：搜尋待辦、日記、收支、靈感及自訂分類 ===
+function openGlobalSearch() {
+  const old = document.getElementById('globalSearchLayer');
+  if (old) old.remove();
+  const layer = document.createElement('div');
+  layer.id = 'globalSearchLayer';
+  layer.className = 'utility-layer';
+  layer.innerHTML = `
+    <section class="utility-dialog" role="dialog" aria-modal="true" aria-labelledby="globalSearchTitle">
+      <div class="utility-dialog-head"><h2 id="globalSearchTitle">搜尋所有紀錄</h2><button type="button" class="utility-close" aria-label="關閉" onclick="closeUtilityLayer()">✕</button></div>
+      <label class="sr-only" for="globalSearchInput">搜尋關鍵字</label>
+      <input id="globalSearchInput" type="search" placeholder="輸入關鍵字，例如：買菜、靈感、金額…" autocomplete="off">
+      <div id="globalSearchResults" class="global-search-results"><p class="utility-hint">輸入關鍵字，即時搜尋所有分類。</p></div>
+    </section>`;
+  layer.addEventListener('click', e => { if (e.target === layer) closeUtilityLayer(); });
+  document.body.appendChild(layer);
+  const input = layer.querySelector('#globalSearchInput');
+  input.addEventListener('input', () => renderGlobalSearchResults(input.value));
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') closeUtilityLayer(); });
+  input.focus();
+}
+
+function renderGlobalSearchResults(query) {
+  const target = document.getElementById('globalSearchResults');
+  if (!target) return;
+  const q = String(query || '').trim().toLocaleLowerCase();
+  if (!q) { target.innerHTML = '<p class="utility-hint">輸入關鍵字，即時搜尋所有分類。</p>'; return; }
+  const found = [];
+  for (const cat of (appData.categories || [])) {
+    for (const item of (appData.items[cat.id] || [])) {
+      const haystack = [item.text, item.store, item.cat, item.date, item.amount, item.due]
+        .filter(v => v !== undefined && v !== null).join(' ').toLocaleLowerCase();
+      if (haystack.includes(q)) found.push({cat, item});
+    }
+  }
+  found.sort((a,b) => String(b.item.date || '').localeCompare(String(a.item.date || '')));
+  if (!found.length) { target.innerHTML = '<p class="utility-hint">找不到符合的紀錄，試試其他關鍵字。</p>'; return; }
+  target.innerHTML = `<p class="utility-result-count">找到 ${found.length} 筆紀錄</p>` + found.slice(0,80).map(({cat,item}, i) =>
+    `<button type="button" class="global-result" data-search-cat="${escHtml(cat.id)}" data-search-id="${escHtml(String(item.id))}">
+      <span class="global-result-icon">${escHtml(cat.icon || '•')}</span><span class="global-result-body"><b>${escHtml(cat.name)}</b><span>${escHtml(String(item.text || item.store || '（無文字）').slice(0,140))}</span><small>${escHtml(String(item.date || ''))}${item.amount != null ? ` · NT$${Number(item.amount).toLocaleString()}` : ''}</small></span><span class="global-result-arrow">›</span>
+    </button>`).join('') + (found.length > 80 ? '<p class="utility-hint">僅顯示前 80 筆，請增加關鍵字縮小範圍。</p>' : '');
+  target.querySelectorAll('.global-result').forEach(btn => btn.addEventListener('click', () => {
+    const catId = btn.dataset.searchCat, itemId = btn.dataset.searchId;
+    closeUtilityLayer();
+    goTab(catId);
+    requestAnimationFrame(() => {
+      const el = [...document.querySelectorAll('[data-id]')].find(n => n.dataset.id === itemId);
+      if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('search-result-highlight'); setTimeout(() => el.classList.remove('search-result-highlight'), 2200); }
+    });
+  }));
+}
+
+function closeUtilityLayer() {
+  const layer = document.getElementById('globalSearchLayer');
+  if (layer) layer.remove();
+  const backup = document.getElementById('backupFileInput');
+  if (backup && backup.dataset.cleanup === '1') backup.remove();
+}
+
+// === 資料備份與還原：匯出完整 JSON，匯入前驗證格式並二次確認 ===
+function exportBackup() {
+  try {
+    const payload = {format:'rongge-personal-platform-backup', schema:2, exportedAt:new Date().toISOString(), data:appData, habitData:localStorage.getItem('habit.v2') || localStorage.getItem('habit.v1') || null};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    a.href = url;
+    a.download = `榮哥動起來_備份_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    showUtilityNotice('備份檔已開始下載。日記照片、錄音等附件需另行保存。');
+  } catch (e) { showUtilityNotice('備份失敗，請確認瀏覽器下載權限。', true); }
+}
+
+function importBackup() {
+  let input = document.getElementById('backupFileInput');
+  if (!input) {
+    input = document.createElement('input'); input.id='backupFileInput'; input.type='file'; input.accept='.json,application/json'; input.hidden=true;
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0]; if (!file) return;
+      try {
+        if (file.size > 20 * 1024 * 1024) throw new Error('檔案大於 20 MB，請確認是否選錯檔案。');
+        const parsed = JSON.parse(await file.text());
+        const data = parsed && parsed.format === 'rongge-personal-platform-backup' ? parsed.data : parsed;
+        if (!data || !Array.isArray(data.categories) || !data.items || typeof data.items !== 'object' || Array.isArray(data.items)) throw new Error('檔案格式不正確，沒有找到有效的分類與紀錄。');
+        if (!confirm(`將以備份內容取代目前裝置上的紀錄。備份日期：${parsed.exportedAt || '未知'}\n建議先按「備份」保存目前資料。日記照片、錄音等附件不包含在 JSON 備份中。\n確定還原嗎？`)) return;
+        const cleanCategories = data.categories.filter(c => c && typeof c.id === 'string' && typeof c.name === 'string' && c.id !== 'sticky');
+        if (!cleanCategories.some(c => c.id === 'todo')) throw new Error('備份缺少必要的待辦分類，為避免資料損壞已取消還原。');
+        const cleanItems = {};
+        for (const c of cleanCategories) cleanItems[c.id] = Array.isArray(data.items[c.id]) ? data.items[c.id] : [];
+        const next = {...appData, ...data, categories:cleanCategories, items:cleanItems};
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        if (typeof parsed.habitData === 'string') localStorage.setItem('habit.v2', parsed.habitData);
+        appData = next; currentTab = 'todo'; homeOpen = true; dashboardOpen = false; saveNav(); renderAll();
+        showUtilityNotice('資料還原完成。若有習慣資料，請切換至習慣頁確認。');
+      } catch (e) { showUtilityNotice('還原失敗：' + (e.message || '檔案無法讀取'), true); }
+      finally { input.value = ''; }
+    });
+    document.body.appendChild(input);
+  }
+  input.click();
+}
+
+function showUtilityNotice(message, isError=false) {
+  const old = document.getElementById('utilityNotice'); if (old) old.remove();
+  const el = document.createElement('div'); el.id='utilityNotice'; el.className='utility-notice' + (isError?' is-error':'');
+  el.setAttribute('role','status'); el.textContent=message; document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3600);
+}
+
 // === 小工具 ===
 function escHtml(s) {
   const d = document.createElement('div');
@@ -1651,7 +1777,7 @@ function escHtml(s) {
 
 // === Service Worker ===
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
 }
 
 // === 啟動 ===
