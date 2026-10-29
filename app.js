@@ -563,7 +563,9 @@ function bindAddForm() {
   if (!addBtn || !addText) return;
   addBtn.addEventListener('click', () => submitAddText());
   addText.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addBtn.click(); }
+    if (e.key !== 'Enter') return;
+    if (currentTab === 'diary') return;            // 日記：Enter 一律換行，不送出（只用「新增」按鈕送）
+    if (!e.shiftKey) { e.preventDefault(); addBtn.click(); }
   });
   addText.addEventListener('input', () => autoGrowInput(addText));
   autoGrowInput(addText);

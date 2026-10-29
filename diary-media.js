@@ -147,7 +147,7 @@
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
       <div class="dt-draft" id="dtDraft"></div>
-      <div class="dt-saved" id="dtSaved"></div>
+      <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span><span class="dt-stamp" id="dtStamp"></span></div>
       <div class="dt-pop" id="dtPop"></div>
       <input type="file" id="dtFile" accept="image/*" multiple style="display:none">`;
     const host = formEl.querySelector("#diaryTools") || formEl;
@@ -160,13 +160,8 @@
     // ① 自動補日期（聚焦即補），② 隨寫隨存（草稿自動保存／還原）
     restoreDraft();
     if (inputEl) {
-      inputEl.addEventListener("focus", () => {
-        if (!inputEl.value.trim()) {
-          inputEl.value = datePrefix() + "\n";
-          inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
-          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-      });
+      const stampEl = document.getElementById("dtStamp");
+      if (stampEl) stampEl.textContent = datePrefix();
       inputEl.addEventListener("input", e => { liveText = e.target.value; scheduleSave(); });
       inputEl.addEventListener("blur", saveDraftNow);
     }
@@ -210,6 +205,7 @@
     try { o = JSON.parse(raw); } catch (e) { return; }
     if (!o) return;
     const memHas = draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length));
+    if (o.text) o.text = String(o.text).replace(/^\d{2}-\d{2} (?:上午|下午)\d{1,2}:\d{2}\s*\n?/, "");  // 舊草稿去掉自動日期行
     if (!liveText && o.text) liveText = o.text;
     if (inputEl && !inputEl.value.trim() && liveText) inputEl.value = liveText;
     if (!memHas && o.d) draft = Object.assign(empty(), o.d);

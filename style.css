@@ -971,8 +971,20 @@ nav {
   display: block;
   box-sizing: border-box;
 }
-#diaryTools { border-top: 1px solid var(--border); padding: 0 6px 2px; }
-#diaryTools .dt-bar { padding: 3px 0 0 !important; }
+#diaryTools { border-top: 1px solid var(--border); padding: 0 8px 2px; }
+/* 日期與儲存狀態貼在輸入框右下角 */
+#diaryTools .dt-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: var(--text2);
+  padding: 0 2px 4px;
+  min-height: 14px;
+}
+#diaryTools .dt-stamp { font-variant-numeric: tabular-nums; opacity: 0.9; }
+#diaryTools .dt-saved { padding: 0; min-height: 0; font-size: 0.68rem; }
 
 .add-form input,
 .add-form textarea {
