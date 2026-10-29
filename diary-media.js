@@ -407,7 +407,7 @@
     const d = toolsEl.querySelector("#dtDraft");
     let h = "";
     if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
-    if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音 ${draft.audio.dur || 0} 秒</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
+    if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
     if (draft.sketch) h += `<div class="dt-sk">✏️ 手寫 1 張 <button type="button" data-delsketch="1">刪除</button></div>`;
     if (draft.rows.length) {
       h += `<div class="dt-rows">` + draft.rows.map((r, i) => `
@@ -429,13 +429,8 @@
     if (pv && draft.audio) {
       const stored = Number(pv.parentElement.dataset.dur || draft.audio.dur || 0);
       const label = pv.parentElement.querySelector(".dt-alab");
-      const show = s => {
-        const t = Math.max(0, Math.floor(s));
-        if (label) label.textContent = "🔊 錄音 " + (t < 3600
-          ? Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0")
-          : Math.floor(t / 3600) + ":" + String(Math.floor((t % 3600) / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"));
-      };
-      show(stored);
+      const show = () => { if (label) label.textContent = "🔊 錄音"; };
+      show();
       getBlob(draft.audio.id).then(b => {
         if (!b) return;
         if (pv.src) { try { URL.revokeObjectURL(pv.src); } catch (e) {} }
@@ -519,7 +514,7 @@
     let h = "";
     if (it.images && it.images.length) h += `<div class="diary-imgs">${it.images.map(m => `<img data-mid="${m.id}" src="${m.thumb}" alt="">`).join("")}</div>`;
     if (it.sketch) h += `<div class="diary-imgs"><img data-mid="${it.sketch.id}" src="${it.sketch.thumb}" alt="手寫"></div>`;
-    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}" data-dur="${it.audio.dur || 0}"><span class="adur">🔊 ${it.audio.dur || 0} 秒</span><audio controls preload="metadata"></audio></div>`;
+    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}" data-dur="${it.audio.dur || 0}"><span class="adur">🔊 錄音</span><audio controls preload="metadata"></audio></div>`;
     if (it.rows && it.rows.length) {
       const tot = it.rows.reduce((s, r) => s + (Number(r.amount) || 0) * (Number(r.qty) || 1), 0);
       h += `<div class="diary-rows">${it.rows.map((r, i) => `<div class="diary-check ${r.done ? "done" : ""}" data-check="${i}">
@@ -582,6 +577,9 @@
           useDuration(au.duration);
         }
       });
+      au.addEventListener("loadedmetadata", () => setTimeout(() => {
+        if (isFinite(au.duration) && au.duration > 0 && window.__ppAudioFix) window.__ppAudioFix(el.dataset.aid, au.duration);
+      }, 800));
       au.addEventListener("ended", () => { if (au.duration && isFinite(au.duration)) useDuration(au.duration); });
       au.addEventListener("error", () => { if (dur) dur.textContent = "無法播放"; });
     });

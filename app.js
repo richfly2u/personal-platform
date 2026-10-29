@@ -661,6 +661,18 @@ window.__ppDiaryFinish = function () {
   } catch (e) {}
 };
 
+// 播放器載入後回寫真實長度（瀏覽器解出的秒數比錄音計時準）
+window.__ppAudioFix = function (audioId, sec) {
+  try {
+    if (!audioId || !isFinite(sec) || sec <= 0) return;
+    const arr = getItems('diary');
+    const it = arr.find(x => x.audio && x.audio.id === audioId);
+    if (!it) return;
+    const real = Math.max(1, Math.round(sec));
+    if (Math.abs((it.audio.dur || 0) - real) >= 1) { it.audio.dur = real; saveData(); }
+  } catch (e) {}
+};
+
 window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
 
 window.__ppDiaryUpsert = function (text, extras) {
