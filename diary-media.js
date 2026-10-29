@@ -80,9 +80,10 @@
 .dt-pop button{min-width:40px;height:40px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font-size:1.05rem;padding:0 8px}
 .dt-pop button.on{border-color:var(--accent);font-weight:600}
 .diary-imgs{display:flex;gap:6px;overflow-x:auto;margin-top:8px}
-.diary-imgs img{width:84px;height:84px;object-fit:cover;border-radius:9px;border:1px solid var(--border);cursor:zoom-in}
-.diary-audio{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.78rem;color:var(--text2)}
-.diary-audio button{border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:.75rem;background:var(--card);color:var(--text)}
+.diary-imgs img{width:96px;height:96px;object-fit:cover;border-radius:9px;border:1px solid var(--border);cursor:zoom-in;background:#0001}
+.diary-audio{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:.75rem;color:var(--text2)}
+.diary-audio audio{flex:1;min-width:150px;height:34px}
+.diary-audio .adur{flex:0 0 auto;font-variant-numeric:tabular-nums}
 .diary-rows{margin-top:8px;border-top:1px dashed var(--border);padding-top:6px;font-size:.82rem}
 .diary-check{display:flex;align-items:center;gap:8px;padding:3px 0}
 .diary-check>span:last-child{margin-left:auto}
@@ -324,7 +325,7 @@
     let h = "";
     if (it.images && it.images.length) h += `<div class="diary-imgs">${it.images.map(m => `<img data-mid="${m.id}" src="${m.thumb}" alt="">`).join("")}</div>`;
     if (it.sketch) h += `<div class="diary-imgs"><img data-mid="${it.sketch.id}" src="${it.sketch.thumb}" alt="手寫"></div>`;
-    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}"><span>🔊 ${it.audio.dur || 0} 秒</span><button type="button" class="dplay">播放</button></div>`;
+    if (it.audio) h += `<div class="diary-audio" data-aid="${it.audio.id}"><span class="adur">🔊 ${it.audio.dur || 0} 秒</span><audio controls preload="metadata" style="flex:1;min-width:150px;height:34px"></audio></div>`;
     if (it.rows && it.rows.length) {
       const tot = it.rows.reduce((s, r) => s + (Number(r.amount) || 0) * (Number(r.qty) || 1), 0);
       h += `<div class="diary-rows">${it.rows.map((r, i) => `<div class="diary-check ${r.done ? "done" : ""}" data-check="${i}">
@@ -355,23 +356,24 @@
 
   async function afterRender(root, saveCb) {
     if (!root) return;
-    root.querySelectorAll(".diary-audio").forEach(el => {
-      const btn = el.querySelector(".dplay");
-      if (!btn || btn.dataset.b) return;
-      btn.dataset.b = "1";
-      btn.addEventListener("click", async ev => {
-        ev.stopPropagation();
-        if (el._a) { el._a.pause(); el._a = null; btn.textContent = "播放"; return; }
-        const blob = await getBlob(el.dataset.aid);
-        if (!blob) { toast("音檔不存在"); return; }
-        const a = new Audio(URL.createObjectURL(blob));
-        el._a = a; btn.textContent = "停止";
-        a.onended = () => { btn.textContent = "播放"; el._a = null; };
-        a.play().catch(() => toast("播放失敗"));
+    root.querySelectorAll(".diary-audio").forEach(async el => {
+      if (el.dataset.b) return; el.dataset.b = "1";
+      const au = el.querySelector("audio");
+      const dur = el.querySelector(".adur");
+      const blob = await getBlob(el.dataset.aid);
+      if (!blob) { if (dur) dur.textContent = "音檔不存在"; return; }
+      au.src = URL.createObjectURL(blob);
+      au.addEventListener("loadedmetadata", () => {
+        const s = Math.round(au.duration || 0);
+        if (dur && s) dur.textContent = "🔊 " + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
       });
+      au.addEventListener("error", () => { if (dur) dur.textContent = "無法播放"; });
     });
     root.querySelectorAll("img[data-mid]").forEach(img => {
       if (img.dataset.b) return; img.dataset.b = "1";
+      if (img.complete && img.naturalWidth === 0) {
+        getBlob(img.dataset.mid).then(b => { if (b) img.src = URL.createObjectURL(b); });
+      }
       img.addEventListener("click", async ev => {
         ev.stopPropagation();
         const blob = await getBlob(img.dataset.mid);

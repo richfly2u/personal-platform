@@ -1191,7 +1191,7 @@ function renderMain() {
     : '';
   let listHtml = '';
   if (listItems.length === 0) {
-    listHtml = isExpense ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`;
+    listHtml = isExpense ? '' : (pendingItems.length ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`);
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));
     listHtml = sorted.map(it => {
@@ -1203,7 +1203,8 @@ function renderMain() {
   }
 
   // 新增區（置於標題下方最上方；麥克風獨立一顆在上、輸入框緊接其下，新增後項目顯示在輸入框下方）
-  const micBtn = voiceSupported ? '<button id="micBtn" class="mic-btn" title="語音輸入">🎤</button>' : '';
+  // 日記頁已有工具列的「聽寫」，不再重複顯示上方麥克風（前賢 2026-10-29 要求）
+  const micBtn = (voiceSupported && cat.id !== 'diary') ? '<button id="micBtn" class="mic-btn" title="語音輸入">🎤</button>' : '';
   const addForm = isExpense
     ? `<div class="add-form">
          ${micBtn}
