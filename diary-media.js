@@ -18,6 +18,19 @@
   ];
   const EMOJIS = ["😊", "🙏", "😌", "😴", "💪", "🌱", "🍚", "☕", "🌤", "🌙", "❤️", "🎉", "😢", "😮", "👍", "🙌", "✨", "🕯️", "📖", "🧘"];
 
+  // 小米備忘錄風格：灰階線性圖示（無底色、無邊框）
+  const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const IC = {
+    check: SVG('<rect x="3.5" y="3.5" width="17" height="17" rx="3.4"/><path d="M8 12.4l2.7 2.7 5-5.6"/>'),
+    mic: SVG('<path d="M12 3.6a3 3 0 0 1 3 3v5.1a3 3 0 0 1-6 0V6.6a3 3 0 0 1 3-3z"/><path d="M6.2 11.6a5.8 5.8 0 0 0 11.6 0"/><path d="M12 17.5V20.5"/>'),
+    wave: SVG('<path d="M3.5 10.5v3M7.5 7.5v9M11.5 4.8v14.4M15.5 8.2v7.6M19.5 10.8v2.4"/>'),
+    pen: SVG('<path d="M4 20.2l4.3-1.1 9.4-9.4a2.15 2.15 0 0 0-3-3L5.3 16.1 4 20.2z"/><path d="M13.9 6.4l3 3"/>'),
+    image: SVG('<rect x="3.4" y="4.2" width="12.6" height="12.6" rx="2.2"/><circle cx="7.6" cy="8.6" r="1.3"/><path d="M4 14.4l3.9-3.3 3.4 2.9"/><path d="M19 13.8v6.4M15.8 17h6.4"/>'),
+    smile: SVG('<circle cx="12" cy="12" r="8.6"/><path d="M9 10.2h.01M15 10.2h.01"/><path d="M8.4 14.4a4.6 4.6 0 0 0 7.2 0"/>'),
+    palette: SVG('<path d="M12 3.4a8.6 8.6 0 0 0 0 17.2c1.5 0 2.1-.9 2.1-1.9 0-1.6 1-2.3 2.3-2.3h1.5a2.8 2.8 0 0 0 2.8-2.8 8.7 8.7 0 0 0-8.7-10.2z"/><circle cx="8.4" cy="10.2" r=".95"/><circle cx="12" cy="7.6" r=".95"/><circle cx="15.6" cy="10.2" r=".95"/>'),
+    stop: SVG('<rect x="7.2" y="7.2" width="9.6" height="9.6" rx="2" fill="currentColor" stroke="none"/>')
+  };
+
   let dbp = null;
   function openDB() {
     if (dbp) return dbp;
@@ -55,8 +68,12 @@
     const s = document.createElement("style");
     s.id = "dmed-style";
     s.textContent = `
-.dt-bar{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;padding:8px 2px 2px}
-.dt-btn{border:1px solid var(--border);background:var(--card);border-radius:9px;padding:9px 0;font-size:1.05rem;line-height:1;color:var(--text);text-align:center}
+.dt-bar{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px 0 2px;align-items:center}
+.dt-bar .dt-btn{border:0!important;background:transparent!important;box-shadow:none!important;padding:8px 0!important;color:var(--text2)!important;text-align:center;line-height:1;min-width:0}
+.dt-bar .dt-btn svg{width:22px;height:22px;display:block;margin:0 auto}
+.dt-bar .dt-btn:active{color:var(--accent)!important}
+.dt-bar .dt-btn.rec{color:#dc2626!important}
+.dt-aa{font-size:.95rem;font-weight:600;letter-spacing:.5px}
 .dt-btn.rec{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;font-weight:600}
 .dt-draft{font-size:.8rem;color:var(--text2)}
 .dt-imgs{display:flex;gap:6px;overflow-x:auto;padding:6px 0}
@@ -119,14 +136,14 @@
     toolsEl = document.createElement("div");
     toolsEl.innerHTML = `
       <div class="dt-bar">
-        <button type="button" class="dt-btn" data-dt="photo" title="照片" aria-label="照片">📷</button>
-        <button type="button" class="dt-btn" data-dt="rec" title="錄音" aria-label="錄音">🎤</button>
-        <button type="button" class="dt-btn" data-dt="dict" title="聽寫" aria-label="聽寫">🗣</button>
-        <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">😊</button>
-        <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">🎨</button>
-        <button type="button" class="dt-btn" data-dt="rows" title="明細勾選" aria-label="明細勾選">☑</button>
-        <button type="button" class="dt-btn" data-dt="sketch" title="手寫" aria-label="手寫">✏️</button>
-        <button type="button" class="dt-btn" data-dt="size" title="字級" aria-label="字級">Aa</button>
+        <button type="button" class="dt-btn" data-dt="size" title="字級" aria-label="字級"><span class="dt-aa">Aa</span></button>
+        <button type="button" class="dt-btn" data-dt="rows" title="明細勾選" aria-label="明細勾選">${IC.check}</button>
+        <button type="button" class="dt-btn" data-dt="rec" title="錄音" aria-label="錄音">${IC.mic}</button>
+        <button type="button" class="dt-btn" data-dt="dict" title="聽寫" aria-label="聽寫">${IC.wave}</button>
+        <button type="button" class="dt-btn" data-dt="sketch" title="手寫" aria-label="手寫">${IC.pen}</button>
+        <button type="button" class="dt-btn" data-dt="photo" title="照片" aria-label="照片">${IC.image}</button>
+        <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">${IC.smile}</button>
+        <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
       <div class="dt-draft" id="dtDraft"></div>
       <div class="dt-pop" id="dtPop"></div>
@@ -274,7 +291,7 @@
     }
     d.innerHTML = h;
     const rb = toolsEl.querySelector('[data-dt="rec"]');
-    if (rb) { rb.textContent = rec ? "⏹" : "🎤"; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
+    if (rb) { rb.innerHTML = rec ? IC.stop : IC.mic; rb.title = rec ? "停止錄音" : "錄音"; rb.classList.toggle("rec", !!rec); }
   }
 
   function onClick(e) {
