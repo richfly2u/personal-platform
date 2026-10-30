@@ -2032,6 +2032,7 @@ function renderHome() {
       </div>
       <div class="home-links">
           <button class="home-link utility-link" type="button" onclick="exportBackup()">${ico('download', 14)} 備份</button>
+          <button class="home-link utility-link" type="button" onclick="window.fullBackupToDrive && window.fullBackupToDrive()">${ico('cloud', 14) || '☁'} 完整備份(雲端)</button>
           <button class="home-link utility-link" type="button" onclick="importBackup()">${ico('upload', 14)} 還原</button>
           <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">${ico('bento', 14)} 便當組合</a>
           <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">${ico('building', 14)} 凱鴻</a>
