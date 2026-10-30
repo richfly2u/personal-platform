@@ -120,6 +120,14 @@
   padding:9px 15px;border-radius:999px;font-size:.78rem;opacity:0;transition:.2s;z-index:260;pointer-events:none;max-width:86vw;text-align:center}
 .diary-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .dt-saved{font-size:.66rem;color:var(--text2);text-align:right;padding:0 4px 3px;min-height:13px;opacity:.85}
+.dt-live{display:none;align-items:center;gap:8px;padding:8px 4px 2px}
+.dt-live.on{display:flex}
+.dt-live .dot{width:9px;height:9px;border-radius:50%;background:#dc2626;flex:none;animation:dtBlink 1s infinite}
+.dt-live.dict .dot{background:#f59e0b}
+.dt-live .bars{display:flex;align-items:flex-end;gap:3px;height:20px;flex:1;min-width:0}
+.dt-live .bars i{display:block;width:4px;height:5px;border-radius:2px;background:#e8b46a;transition:height .08s linear}
+.dt-live .lbl{font-size:.72rem;color:#8b7355;flex:none}
+@keyframes dtBlink{0%,100%{opacity:1}50%{opacity:.25}}
 .sk-wrap{position:fixed;inset:0;background:#fff;z-index:210;display:flex;flex-direction:column}
 .sk-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #eee;font-size:.9rem;color:#3d2c1e}
 .sk-wrap canvas{flex:1;touch-action:none;background:#fff;width:100%}
@@ -149,6 +157,11 @@
         <button type="button" class="dt-btn" data-dt="photo" title="照片" aria-label="照片">${IC.image}</button>
         <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">${IC.smile}</button>
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
+      </div>
+      <div class="dt-live" id="dtLive" aria-live="polite">
+        <span class="dot"></span>
+        <span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="lbl" id="dtLiveLbl">錄音中</span>
       </div>
       <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span></div>
       <div class="dt-pop" id="dtPop"></div>
@@ -323,6 +336,59 @@
   }
 
   let rec = null, chunks = [], recAt = 0;
+
+  // ==== 錄音／聽寫中的聲波指示（讓使用者知道正在錄）====
+  let liveRAF = null, liveAC = null, liveAnalyser = null, liveT0 = 0;
+  function liveNode() { return toolsEl ? toolsEl.querySelector('#dtLive') : null; }
+  function showLive(kind) {
+    const el = liveNode(); if (!el) return;
+    el.classList.add('on');
+    el.classList.toggle('dict', kind === 'dict');
+    const lbl = el.querySelector('#dtLiveLbl');
+    if (lbl) lbl.textContent = kind === 'dict' ? '正在聽…請說話' : '錄音中 0:00';
+    liveT0 = Date.now();
+    if (liveRAF) cancelAnimationFrame(liveRAF);
+    const bars = [...el.querySelectorAll('.bars i')];
+    const tick = () => {
+      const box = liveNode();
+      if (!box || !box.classList.contains('on')) { liveRAF = null; return; }
+      if (liveAnalyser) {
+        const data = new Uint8Array(liveAnalyser.frequencyBinCount);
+        liveAnalyser.getByteFrequencyData(data);
+        bars.forEach((b, i) => {
+          const v = data[Math.min(data.length - 1, i)] || 0;
+          b.style.height = (4 + Math.round((v / 255) * 16)) + 'px';
+        });
+      } else {
+        bars.forEach(b => { b.style.height = (5 + Math.round(Math.random() * 13)) + 'px'; });
+      }
+      if (kind !== 'dict') {
+        const sec = Math.floor((Date.now() - liveT0) / 1000);
+        const lb = box.querySelector('#dtLiveLbl');
+        if (lb) lb.textContent = '錄音中 ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+      }
+      liveRAF = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  function hideLive() {
+    const el = liveNode();
+    if (el) el.classList.remove('on', 'dict');
+    if (liveRAF) { cancelAnimationFrame(liveRAF); liveRAF = null; }
+    if (liveAC) { try { liveAC.close(); } catch (e) {} liveAC = null; }
+    liveAnalyser = null;
+  }
+  function attachAnalyser(stream) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      liveAC = new AC();
+      const src = liveAC.createMediaStreamSource(stream);
+      liveAnalyser = liveAC.createAnalyser();
+      liveAnalyser.fftSize = 32;
+      src.connect(liveAnalyser);
+    } catch (e) { liveAnalyser = null; }
+  }
   async function startRec() {
     if (!navigator.mediaDevices || !window.MediaRecorder) { toast("此瀏覽器不支援錄音"); return; }
     try {
@@ -330,6 +396,7 @@
       rec = new MediaRecorder(stream); chunks = []; recAt = Date.now();
       rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
       rec.onstop = async () => {
+        hideLive();
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
         const id = uid();
@@ -341,6 +408,7 @@
         paint();
         if (window.__ppDiaryRerender) window.__ppDiaryRerender();
       };
+      attachAnalyser(stream); showLive("rec");
       rec.start(); paint();
     } catch (e) { toast("麥克風被拒絕或不可用"); }
   }
@@ -358,9 +426,9 @@
       for (const r of e.results) t += r[0].transcript;
       if (inputEl) { inputEl.value = (base ? base + " " : "") + t; inputEl.dispatchEvent(new Event("input")); }
     };
-    sr.onend = () => { sr = null; };
-    sr.onerror = () => { sr = null; };
-    try { sr.start(); toast("請開始說話…"); } catch (e) { sr = null; }
+    sr.onend = () => { sr = null; hideLive(); };
+    sr.onerror = () => { sr = null; hideLive(); };
+    try { sr.start(); showLive("dict"); } catch (e) { sr = null; hideLive(); }
   }
 
   const rowsTotal = () => draft.rows.reduce((s, r) => s + (Number(r.amount) || 0) * (Number(r.qty) || 1), 0);

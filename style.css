@@ -1841,14 +1841,6 @@ li.todo-li.acting, li.diary-li.acting { background: #fffdf7; }
   font-weight: 700; box-shadow: 0 5px 14px rgba(239,175,88,.42);
 }
 
-/* 語音優先：日記頁主按鈕 */
-.diary-cream .dc-voice {
-  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
-  background: #fff; color: #B4791F; border: 1.5px dashed #EFD3A6; border-radius: 18px;
-  padding: 13px 16px; font-size: .92rem; font-weight: 700; cursor: pointer; margin: 0 0 12px;
-  box-shadow: 0 6px 16px rgba(170,140,100,.08);
-}
-.diary-cream .dc-voice:active { background: #FFF6E8; }
 /* 分享單篇 */
 li.diary-li .share-btn { display: none; }
 li.diary-li.acting .share-btn { display: inline-flex; align-items: center; justify-content: center; }

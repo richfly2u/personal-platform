@@ -48,7 +48,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '64';
+const APP_VERSION = '65';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -723,12 +723,6 @@ function tipToast(msg) {
 document.addEventListener('click', function (e) {
   const t = e.target;
   if (!t || !t.closest) return;
-  if (t.closest('#dcVoiceBtn')) {
-    const dictBtn = document.querySelector('.dt-btn[data-dt="dict"]');
-    if (dictBtn) { dictBtn.click(); }
-    else { tipToast('這台裝置的瀏覽器不支援語音輸入'); }
-    return;
-  }
   const sh = t.closest('.share-btn');
   if (sh) {
     const it = getItems('diary').find(x => x.id === sh.dataset.id);
@@ -1717,7 +1711,6 @@ function renderMain() {
            <button type="button" class="dc-ai-btn" id="diaryAiBtn">${ico('bulb', 14)} AI 回顧</button>
          </div>
          <div class="dc-moods" id="dcMoods">${DIARY_MOODS.map(m => `<button type="button" class="dc-mood" data-mood="${m}">${m}</button>`).join('')}</div>
-         <button type="button" class="dc-voice" id="dcVoiceBtn">${ico('mic', 18)} 語音記錄：說一段，轉成日記</button>
          <div class="add-row">
            <div class="diary-box">
              <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
