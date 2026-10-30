@@ -1960,3 +1960,48 @@ li.diary-li .read-btn svg { display: block; }
   border-left: 2px solid #EFD3A6; padding-left: 8px; min-height: 1.1em; outline: none;
 }
 .dc-edit .ed-cap:empty::before { content: '點一下寫圖片說明'; color: #BEB3A2; }
+
+/* ===== 日記列表：卡片／月份分組／搜尋（2026-10-30 吸收他版優點）===== */
+.dsearch { margin: 4px 0 6px; }
+.dsearch-box { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #F1E4D2; border-radius: 999px; padding: 9px 14px; color: #A79C8B; }
+.dsearch-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; box-shadow: none; padding: 0; font-size: .9rem; color: var(--text); }
+.dfilters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 8px 0 2px; }
+.dfilters::-webkit-scrollbar { display: none; }
+.dfilter { flex: none; border: 1px solid #F1E4D2; background: #fff; color: #8A8378; font-size: .76rem; padding: 6px 12px; border-radius: 999px; cursor: pointer; line-height: 1.2; }
+.dfilter.on { background: #EFAF58; border-color: #DE9832; color: #fff; font-weight: 700; }
+
+.dmon-head { display: flex; align-items: center; gap: 8px; margin: 16px 4px 8px; font-size: .84rem; font-weight: 700; color: #8A8378; cursor: pointer; user-select: none; }
+.dmon-head .n { font-weight: 500; font-size: .74rem; opacity: .85; }
+.dmon-head .caret { margin-left: auto; font-size: .8rem; }
+
+li.diary-li.dcard {
+  display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 0;
+  align-items: start; padding: 14px; margin-bottom: 10px; border-radius: 18px;
+  border: 1px solid #F7EBDA; background: #fff; box-shadow: 0 6px 18px rgba(170,140,100,.10);
+  position: relative;
+}
+.dcard-date { grid-column: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 46px; padding: 7px 0; border-radius: 14px; background: rgba(239,175,88,.16); color: #B4791F; line-height: 1.1; }
+.dcard-date b { font-size: 1.25rem; font-weight: 700; }
+.dcard-date span { font-size: .66rem; margin-top: 2px; }
+.dcard-main { grid-column: 2; min-width: 0; }
+.dcard-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .72rem; min-height: 24px; }
+.dcard-time { font-variant-numeric: tabular-nums; opacity: .7; }
+.dcard-mood { padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: .7rem; }
+.dcard-mood.m-xi { background: #FFF1D1; color: #B4791F; }
+.dcard-mood.m-nu { background: #FFE3DF; color: #C0392B; }
+.dcard-mood.m-ai { background: #E3EDFB; color: #3F6FB5; }
+.dcard-mood.m-le { background: #FFE8F1; color: #C2477F; }
+.dcard-mood.m-calm { background: #E3F4EA; color: #3E8F63; }
+.dcard-tags { opacity: .8; letter-spacing: .5px; }
+.dcard-more { margin-left: auto; border: 0; background: transparent; color: inherit; opacity: .55; font-size: 1.15rem; line-height: 1; padding: 2px 8px; min-height: 28px; cursor: pointer; }
+.dcard-text { margin-top: 4px; font-size: .93rem; line-height: 1.7; color: inherit; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.dcard-text.is-empty { opacity: .45; }
+.dcard-thumb { grid-column: 3; position: relative; width: 64px; height: 64px; border-radius: 14px; overflow: hidden; background: #F3E7D6; }
+.dcard-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dcard-thumb i { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.55); color: #fff; font-style: normal; font-size: .62rem; padding: 1px 6px; border-radius: 999px; }
+.dcard-acts { display: none; grid-column: 1 / -1; justify-content: flex-end; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #F1E4D2; }
+li.diary-li.dcard.acting .dcard-acts { display: flex; }
+li.diary-li.dcard.acting { background: #FFFDF7; }
+.dact { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #FFF6E8; color: #8A8378; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.dact:active { background: #FBE7C6; }
+.dact-del { color: #c0392b; }

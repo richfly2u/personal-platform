@@ -271,15 +271,16 @@
     clearTimeout(saveTimer);
     suppressSave = true;
     liveText = stripStamp(item.text || "");
-    if (inputEl && edValue(inputEl) !== liveText) edSet(liveText);
-    autoSizeTa();
     const itemHasMedia = (item.images || []).length || item.audio || item.sketch || (item.rows || []).length;
+    // 先還原附件，再組編輯器內容：圖片節點要用 draft.images 才長得出來
     if (itemHasMedia || !draft || (!draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length)) {
       draft = {
         images: item.images || [], audio: item.audio || null, sketch: item.sketch || null,
         rows: item.rows || [], bg: item.bg || "none", size: item.size || ""
       };
     }
+    if (inputEl && edValue(inputEl) !== liveText) edSet(liveText);
+    autoSizeTa();
     paint();
     setTimeout(() => { suppressSave = false; editingLoad = false; }, 700);
   }
