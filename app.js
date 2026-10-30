@@ -1770,14 +1770,22 @@ function renderLegacyHabits() {
   const main = document.getElementById('main');
   if (!main) return;
   main.style.display = '';
-  main.innerHTML = `
-    <div class="lh-wrap">
-      <div class="lh-bar">
-        <span>養成好習慣（舊版儀表板）</span>
-        <a href="${LEGACY_HABITS_URL}" target="_blank" rel="noopener">用新分頁開啟</a>
-      </div>
-      <iframe id="hbLegacy" src="${LEGACY_HABITS_URL}" title="養成好習慣儀表板"></iframe>
-    </div>`;
+  main.innerHTML = `<div class="lh-wrap"><iframe id="hbLegacy" src="${LEGACY_HABITS_URL}" title="養成好習慣"></iframe></div>`;
+  // 同網域 → 直接藏掉儀表板裡的「🧠 個人平台」鈕（前賢 2026-10-30 要求）
+  const f = document.getElementById('hbLegacy');
+  if (f) {
+    const clean = () => {
+      try {
+        const d = f.contentDocument; if (!d) return;
+        if (d.getElementById('ppHideStyle')) return;
+        const st = d.createElement('style');
+        st.id = 'ppHideStyle';
+        st.textContent = '#ppOpenBtn{display:none!important}#ppOpen{display:none!important}';
+        (d.head || d.documentElement).appendChild(st);
+      } catch (e) {}
+    };
+    f.addEventListener('load', clean);
+  }
 }
 
 // === 渲染 ===
