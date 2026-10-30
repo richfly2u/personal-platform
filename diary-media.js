@@ -425,6 +425,12 @@
     fig.className = 'ed-fig'; fig.dataset.img = id; fig.contentEditable = 'false';
     const img = document.createElement('img');
     img.src = im.thumb; img.alt = ''; img.loading = 'lazy';
+    // 🔴 編輯器原本只掛 280px 縮圖，放大看就是糊的 → 先放縮圖頂著，背景換成 IndexedDB 裡的原圖
+    try {
+      if (window.__ppDiaryBlob && window.__ppDiaryBlob.get) {
+        window.__ppDiaryBlob.get(id).then(b => { if (b) img.src = URL.createObjectURL(b); });
+      }
+    } catch (e) {}
     const cap = document.createElement('figcaption');
     cap.className = 'ed-cap'; cap.contentEditable = 'true'; cap.dataset.cap = id;
     cap.textContent = im.caption || '';
@@ -593,8 +599,8 @@
       if (/^video\//.test(f.type)) continue;
       if (!/^image\//.test(f.type)) continue;
       try {
-        const big = await imgFromFile(f, 1600, 0.82);
-        const sm = await imgFromFile(f, 280, 0.6);
+        const big = await imgFromFile(f, 2048, 0.9);
+        const sm = await imgFromFile(f, 480, 0.72);
         const id = uid();
         await putBlob(id, big.blob);
         draft.images.push({ id, thumb: await toDataURL(sm.blob), w: big.w, h: big.h, caption: '' });
