@@ -179,7 +179,7 @@
     if (inputEl) {
       // 日期不顯示在輸入介面，改在存檔後的日記方框右下外側
       inputEl.addEventListener("input", e => {
-        liveText = e.target.value; touched = true; autoSizeTa();
+        liveText = edValue(e.target); touched = true; autoSizeTa();
         clearTimeout(detachTimer);
         if (!liveText.trim() && !draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length) {
           detachTimer = setTimeout(() => { if (window.__ppDiaryUpsert) window.__ppDiaryUpsert("", null); }, 900);
@@ -217,7 +217,7 @@
     if (editingLoad) return;   // 載入編輯中，不要把空白寫回去
     try {
       const ta = document.querySelector("#addText");
-      const domText = ta ? ta.value : (inputEl ? inputEl.value : "");
+      const domText = ta ? (ta.tagName === "TEXTAREA" ? ta.value : edValue(ta)) : (inputEl ? edValue(inputEl) : "");
       if (domText) liveText = domText;
       const text = liveText;
       const hasAny = text.trim() || (draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length)));
@@ -243,11 +243,11 @@
     const memHas = draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length));
     if (o.text) o.text = String(o.text).replace(/^\d{2}-\d{2} (?:上午|下午)\d{1,2}:\d{2}\s*\n?/, "");  // 舊草稿去掉自動日期行
     if (!liveText && o.text) liveText = o.text;
-    if (inputEl && !inputEl.value.trim() && liveText) inputEl.value = liveText;
+    if (inputEl && !edValue(inputEl).trim() && liveText) edSet(liveText);
     if (!memHas && o.d) draft = Object.assign(empty(), o.d);
     if ((o.text && o.text.trim()) || (o.d && ((o.d.images || []).length || o.d.audio || o.d.sketch || (o.d.rows || []).length))) {
       markSaved("已還原草稿");
-      if (inputEl && inputEl.value) inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+      if (inputEl && edValue(inputEl)) inputEl.dispatchEvent(new Event("input", { bubbles: true }));
     }
   }
   // 把「正在寫的那筆」載回輸入框（從資料還原）
@@ -256,6 +256,7 @@
     const ta = document.querySelector("#addText") || inputEl;
     if (!ta) return;
     // 輸入框至少佔畫面 1/3（扣掉工具列高度），內容更多才繼續長高
+    if (ta.tagName !== "TEXTAREA") { ta.style.minHeight = Math.max(285, Math.round(window.innerHeight / 2.4) - 60) + "px"; return; }
     const minH = Math.max(285, Math.round(window.innerHeight / 2.4) - 60);
     ta.style.height = "auto";
     ta.style.height = Math.max(minH, Math.min(640, ta.scrollHeight)) + "px";
@@ -270,7 +271,7 @@
     clearTimeout(saveTimer);
     suppressSave = true;
     liveText = stripStamp(item.text || "");
-    if (inputEl && inputEl.value !== liveText) inputEl.value = liveText;
+    if (inputEl && edValue(inputEl) !== liveText) edSet(liveText);
     autoSizeTa();
     const itemHasMedia = (item.images || []).length || item.audio || item.sketch || (item.rows || []).length;
     if (itemHasMedia || !draft || (!draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length)) {
@@ -297,7 +298,7 @@
     clearTimeout(saveTimer);
     liveText = "";
     draft = { images: [], audio: null, sketch: null, rows: [], bg: "none", size: "" };
-    if (inputEl) inputEl.value = "";
+    if (inputEl) { if (isDiv(inputEl)) edSet(""); else inputEl.value = ""; }
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
     markSaved("");
     if (toolsEl) { try { paint(); } catch (e) {} }
@@ -321,9 +322,94 @@
 
   // ==== 圖文混合：圖片用唯一 ID 標記 〔img:ID〕插在文字游標處 ====
   const mkOf = id => '〔img:' + id + '〕';
+  // ==== 內嵌圖文編輯器配接層：日記用 div contenteditable，圖片直接在文字之間 ====
+  const isDiv = el => !!el && el.tagName !== 'TEXTAREA' && el.tagName !== 'INPUT';
+  const escH = str => String(str == null ? '' : str).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function edValue(el) {
+    const node = el || inputEl;
+    if (!node) return '';
+    if (!isDiv(node)) return node.value || '';
+    let out = '';
+    const walk = parent => {
+      parent.childNodes.forEach(n => {
+        if (n.nodeType === 3) out += n.textContent;
+        else if (n.nodeName === 'FIGURE' && n.dataset && n.dataset.img) out += '\n' + mkOf(n.dataset.img) + '\n';
+        else if (n.nodeName === 'BR') out += '\n';
+        else if (n.nodeType === 1) {
+          if (n.tagName === 'DIV' || n.tagName === 'P') { if (out && !/\n$/.test(out)) out += '\n'; walk(n); }
+          else if (n.tagName === 'IMG') out += '';
+          else out += n.textContent || '';
+        }
+      });
+    };
+    walk(node);
+    return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  }
+
+  function buildFig(id) {
+    const im = (draft.images || []).find(x => x.id === id);
+    if (!im) return null;
+    const fig = document.createElement('figure');
+    fig.className = 'ed-fig'; fig.dataset.img = id; fig.contentEditable = 'false';
+    const img = document.createElement('img');
+    img.src = im.thumb; img.alt = ''; img.loading = 'lazy';
+    const cap = document.createElement('figcaption');
+    cap.className = 'ed-cap'; cap.contentEditable = 'true'; cap.dataset.cap = id;
+    cap.textContent = im.caption || '';
+    fig.appendChild(img); fig.appendChild(cap);
+    return fig;
+  }
+
+  function edSet(text) {
+    const node = inputEl;
+    if (!node) return;
+    if (!isDiv(node)) { node.value = text; return; }
+    const parts = String(text == null ? '' : text).split(/〔img:([A-Za-z0-9]+)〕/g);
+    node.innerHTML = '';
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) { const f = buildFig(parts[i]); if (f) node.appendChild(f); continue; }
+      const chunk = parts[i];
+      if (!chunk) continue;
+      chunk.split('\n').forEach((line, idx) => {
+        if (idx) node.appendChild(document.createElement('br'));
+        if (line) node.appendChild(document.createTextNode(line));
+      });
+    }
+  }
+
+  function edInsert(node) {
+    const el = inputEl;
+    if (!el) return false;
+    if (!isDiv(el)) return false;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !el.contains(sel.anchorNode)) { el.appendChild(node); return true; }
+    const r = sel.getRangeAt(0);
+    r.deleteContents(); r.insertNode(node);
+    const r2 = document.createRange(); r2.setStartAfter(node); r2.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r2);
+    return true;
+  }
+
+  function edAppend(node) {
+    const el = inputEl;
+    if (!el || !isDiv(el)) return;
+    el.appendChild(node);
+  }
+
   function insertMarker(id) {
+    if (!inputEl) return;
+    if (isDiv(inputEl)) {
+      const fig = buildFig(id);
+      if (!fig) return;
+      const anchorBr = document.createElement('br');
+      edInsert(fig);
+      edInsert(anchorBr);
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    // 其他表單（非日記）沿用純文字版
     const ta = inputEl;
-    if (!ta) return;
     const v = ta.value || '';
     const s0 = (typeof ta.selectionStart === 'number') ? ta.selectionStart : v.length;
     const e0 = (typeof ta.selectionEnd === 'number') ? ta.selectionEnd : s0;
@@ -331,17 +417,28 @@
     const lead = (before === '' || /\n$/.test(before)) ? '' : '\n';
     const chunk = lead + mkOf(id) + '\n';
     ta.value = before + chunk + after;
-    const pos = before.length + chunk.length;
-    try { ta.setSelectionRange(pos, pos); } catch (err) {}
+    try { ta.setSelectionRange(before.length + chunk.length, before.length + chunk.length); } catch (err) {}
     ta.dispatchEvent(new Event('input'));
   }
   function stripMarker(id) {
     if (!inputEl) return;
+    if (isDiv(inputEl)) {
+      const fig = inputEl.querySelector('figure[data-img="' + id + '"]');
+      if (fig) fig.remove();
+      const t = edValue(inputEl);
+      if (t.indexOf(mkOf(id)) >= 0) edSet(t.split(mkOf(id)).join(''));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const t = String(inputEl.value || '');
     const next = t.split(mkOf(id)).join('').replace(/\n{3,}/g, '\n\n');
     if (next !== t) { inputEl.value = next; inputEl.dispatchEvent(new Event('input')); }
   }
-  function hasMarker(id) { return inputEl ? String(inputEl.value || '').indexOf(mkOf(id)) >= 0 : false; }
+  function hasMarker(id) {
+    if (!inputEl) return false;
+    if (isDiv(inputEl)) return !!inputEl.querySelector('figure[data-img="' + id + '"]');
+    return String(inputEl.value || '').indexOf(mkOf(id)) >= 0;
+  }
 
   async function addImages(files) {
     touched = true;
@@ -446,11 +543,11 @@
     if (!SR) { toast("此瀏覽器不支援語音轉字，可用錄音"); return; }
     if (sr) { try { sr.stop(); } catch (e) {} sr = null; return; }
     sr = new SR(); sr.lang = "zh-TW"; sr.interimResults = true; sr.continuous = false;
-    const base = inputEl ? inputEl.value : "";
+    const base = inputEl ? edValue(inputEl) : "";
     sr.onresult = e => {
       let t = "";
       for (const r of e.results) t += r[0].transcript;
-      if (inputEl) { inputEl.value = (base ? base + " " : "") + t; inputEl.dispatchEvent(new Event("input")); }
+      if (inputEl) { edSet((base ? base + " " : "") + t); inputEl.dispatchEvent(new Event("input")); }
     };
     sr.onend = () => { sr = null; hideLive(); };
     sr.onerror = () => { sr = null; hideLive(); };
@@ -606,11 +703,26 @@
 
   function insertText(str) {
     if (!inputEl) return;
+    if (isDiv(inputEl)) {
+      edInsert(document.createTextNode(str));
+      inputEl.focus();
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const s = inputEl.selectionStart ?? inputEl.value.length, e2 = inputEl.selectionEnd ?? s;
     inputEl.value = inputEl.value.slice(0, s) + str + inputEl.value.slice(e2);
     inputEl.selectionStart = inputEl.selectionEnd = s + str.length;
     inputEl.focus();
   }
+
+  // 編輯區內的圖片說明即時寫回
+  document.addEventListener('input', e => {
+    const cap = e.target && e.target.closest ? e.target.closest('.ed-cap') : null;
+    if (!cap) return;
+    const id = cap.dataset.cap;
+    const im = (draft.images || []).find(x => x.id === id);
+    if (im) { im.caption = cap.textContent.trim().slice(0, 120); scheduleSave(); }
+  });
 
   function extras(it) {
     let h = "";
@@ -741,5 +853,6 @@
   }
 
   window.__ppDiaryBlob = { get: getBlob, put: putBlob };
-  window.DiaryUI = { mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
+  window.__ppDiaryEd = { value: edValue, set: edSet };
+  window.DiaryUI = { edValue, mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
 })();

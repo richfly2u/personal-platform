@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '67';
+const APP_VERSION = '69';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -101,8 +101,17 @@ function autoGrowInput(el) {
 function startAutoSave() {
   clearAutoSave();
   const addText = document.getElementById('addText');
-  if (!addText || !addText.value.trim()) return;
+  if (!addText || !addTextValue(addText).trim()) return;
   autoSaveTimer = setTimeout(() => { autoSaveTimer = null; submitAddText(); }, AUTOSAVE_MS);
+}
+
+// 取值工具：日記用 div 內嵌編輯器（可放圖），其他分頁仍是 textarea
+function addTextValue(el) {
+  const n = el || document.getElementById('addText');
+  if (!n) return '';
+  if (n.tagName === 'TEXTAREA' || n.tagName === 'INPUT') return n.value || '';
+  if (window.DiaryUI && window.DiaryUI.edValue) return window.DiaryUI.edValue(n);
+  return n.innerText || '';
 }
 
 // === 初始化 ===
@@ -126,7 +135,7 @@ async function init() {
   else renderAll();
   loadSyncData().then(() => {
     // 同步只補資料，不應打斷使用者正在輸入或編輯的畫面。
-    if (!editingId && !document.getElementById('addText')?.value?.trim()) renderAll();
+    if (!editingId && !addTextValue(document.getElementById('addText')).trim()) renderAll();
   }).catch(() => {});
 }
 
@@ -741,7 +750,7 @@ document.addEventListener('click', function (e) {
     const it = getItems('diary').find(x => x.id === sh.dataset.id);
     if (!it) return;
     const title = '拾光日記 · ' + String(it.date || '').trim();
-    const body = String(it.text || '').trim() || '（這一天的日記）';
+    const body = stripDiaryMarks(it.text || '').trim() || '（這一天的日記）';
     const payload = title + '\n\n' + body;
     const legacyCopy = () => {
       try {
@@ -1097,8 +1106,12 @@ async function diaryAIAsk(q) {
 }
 
 // 日記列表只顯示摘要（前賢 2026-10-30：不用全顯示）
+function stripDiaryMarks(text) {
+  return String(text || '').replace(/〔img:[A-Za-z0-9]+〕/g, '');
+}
+
 function diarySummary(text, it) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  const t = stripDiaryMarks(text).replace(/\s+/g, ' ').trim();
   const media = [];
   if ((it && (it.images || []).length)) media.push('照片' + it.images.length);
   if (it && it.audio) media.push('錄音');
@@ -1182,7 +1195,7 @@ function submitAddText() {
   clearAutoSave();
   const addText = document.getElementById('addText');
   if (!addText) return;
-  const text = addText.value.trim();
+  const text = addTextValue(addText).trim();
   if (!text) return;
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
   if (!cat) return;
@@ -1697,7 +1710,12 @@ function doEditItem(id) {
     const ta = document.getElementById('addText');
     if (ta) {
       ta.focus({ preventScroll: true });
-      ta.setSelectionRange(ta.value.length, ta.value.length);
+      if (ta.tagName === 'TEXTAREA') ta.setSelectionRange(ta.value.length, ta.value.length);
+      else {
+        const r = document.createRange();
+        r.selectNodeContents(ta); r.collapse(false);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      }
     }
     return;
   }
@@ -1910,7 +1928,7 @@ function renderMain() {
          <div class="dc-moods" id="dcMoods">${DIARY_MOODS.map(m => `<button type="button" class="dc-mood" data-mood="${m}">${m}</button>`).join('')}</div>
          <div class="add-row">
            <div class="diary-box">
-             <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
+             <div id="addText" class="dc-edit" contenteditable="true" role="textbox" aria-multiline="true" data-ph="寫下今天…"></div>
              <div id="diaryTools"></div>
            </div>
          </div>

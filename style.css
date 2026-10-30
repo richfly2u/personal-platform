@@ -1940,3 +1940,23 @@ li.diary-li .read-btn svg { display: block; }
 @media (min-width: 900px) {
   .dc-read-card { left: auto; right: 24px; bottom: 24px; width: 560px; max-height: 80vh; border-radius: 26px; }
 }
+
+/* ===== 日記內嵌圖文編輯器（圖片直接在文字之間）===== */
+.diary-cream #addText.dc-edit {
+  display: block; white-space: pre-wrap; word-break: break-word;
+  overflow-y: visible !important; max-height: none !important;
+  outline: none; padding: 2px 0 6px;
+}
+.diary-cream #addText.dc-edit:empty::before {
+  content: attr(data-ph); color: #BEB3A2; pointer-events: none;
+}
+.dc-edit .ed-fig { margin: 10px 0 14px; }
+.dc-edit .ed-fig img {
+  display: block; width: 100%; height: auto; max-height: 62vh; object-fit: cover;
+  border-radius: 14px; background: #F3E7D6;
+}
+.dc-edit .ed-cap {
+  margin-top: 6px; font-size: .78rem; line-height: 1.7; color: #8A8378;
+  border-left: 2px solid #EFD3A6; padding-left: 8px; min-height: 1.1em; outline: none;
+}
+.dc-edit .ed-cap:empty::before { content: '點一下寫圖片說明'; color: #BEB3A2; }
