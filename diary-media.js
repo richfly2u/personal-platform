@@ -35,6 +35,7 @@
   // ==== 影片自動上傳到前賢的 YouTube 頻道（不公開），日記改用嵌入呈現（2026-10-30） ====
   // 服務在 kindhome.net/diary-yt（VPS，systemd diary-yt，FastAPI），配額上限每天 6 支
   const YT_API = 'https://kindhome.net/diary-yt';
+  const YT_INFLIGHT = new Set();   // 防止同一支影片被重複上傳（自動補傳＋手動觸發撞在一起）
   const YT_KEY = 'sV9q8JzI2r_OYzHqjxLYnSTGgqxguHZg';
   function ytTitle() {
     const first = String(liveText || '').split('\n').map(x => x.trim()).filter(Boolean)[0] || '日記影片';
@@ -44,6 +45,8 @@
   }
   async function ytUploadVideo(vd, file) {
     if (!vd || !file) return;
+    if (vd.yt || YT_INFLIGHT.has(vd.id)) return;
+    YT_INFLIGHT.add(vd.id);
     vd.ytState = 'up';
     if (typeof paint === 'function') try { paint(); } catch (e) {}
     try {
@@ -67,6 +70,7 @@
     } catch (e) {}
     if (typeof paint === 'function') try { paint(); } catch (e) {}
     if (vd.ytState === 'err') toast('上傳 YouTube 失敗：' + (vd.ytErr || ''));
+    YT_INFLIGHT.delete(vd.id);
   }
 
   let dbp = null;
@@ -445,14 +449,28 @@
     fig.className = 'ed-fig ed-vid'; fig.dataset.vid = id; fig.contentEditable = 'false';
     if (vd.yt) {
       const wrap = document.createElement('div');
-      wrap.className = 'ed-yt';
-      const fr = document.createElement('iframe');
-      fr.src = 'https://www.youtube.com/embed/' + vd.yt;
-      fr.loading = 'lazy';
-      fr.allow = 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      fr.allowFullscreen = true;
-      fr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-      wrap.appendChild(fr);
+      wrap.className = 'ed-yt yt-lite';
+      wrap.dataset.yt = vd.yt;
+      const cover = document.createElement('button');
+      cover.type = 'button';
+      cover.className = 'yt-lite-cover';
+      cover.setAttribute('aria-label', '播放');
+      cover.style.backgroundImage = 'url(https://i.ytimg.com/vi/' + vd.yt + '/hqdefault.jpg)';
+      cover.innerHTML = '<span class="yt-lite-play"></span>';
+      // 點了才載入播放器（未播放前畫面乾淨，只有播放鍵）
+      cover.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        const fr = document.createElement('iframe');
+        fr.src = 'https://www.youtube-nocookie.com/embed/' + vd.yt +
+          '?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3';
+        fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        fr.allowFullscreen = true;
+        fr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        wrap.classList.add('playing');
+        wrap.innerHTML = '';
+        wrap.appendChild(fr);
+      });
+      wrap.appendChild(cover);
       const cap0 = document.createElement('figcaption');
       cap0.className = 'ed-cap'; cap0.contentEditable = 'true'; cap0.dataset.vcap = id;
       cap0.textContent = vd.caption || '';
@@ -1079,8 +1097,35 @@
   }
 
   window.__ppDiaryBlob = { get: getBlob, put: putBlob };
+  window.__ppYtAutoUploadMissing = autoUploadMissing;
   window.__ppDiaryEd = { value: edValue, set: edSet };
+  // 沒有 YouTube 版本、但本機還有檔案的影片 → 自動補上傳（不給前賢按鈕）
+  async function autoUploadMissing() {
+    try {
+      if (window.__ppYtAutoBusy) return;
+      window.__ppYtAutoBusy = true;
+      const arr = window.__ppGetDiary ? window.__ppGetDiary() : [];
+      let done = 0;
+      for (const it of arr) {
+        for (const vd of (it.videos || [])) {
+          if (vd.yt || vd.ytState === 'up' || YT_INFLIGHT.has(vd.id)) continue;
+          const blob = await getBlob(vd.id);
+          if (!blob) continue;
+          if (done >= 2) break;          // 一次最多補 2 支，避免吃光每日配額
+          const ok = await ytUploadBlob(it, vd, blob);
+          if (ok) {
+            done++;
+            if (window.__ppDiarySave) { try { window.__ppDiarySave(); } catch (e) {} }
+            if (window.__ppDiaryRerender) { try { window.__ppDiaryRerender(); } catch (e) {} }
+          }
+        }
+      }
+    } catch (e) {} finally { window.__ppYtAutoBusy = false; }
+  }
+
   async function ytUploadBlob(item, vd, blob) {
+    if (!vd || vd.yt || YT_INFLIGHT.has(vd.id)) return false;
+    YT_INFLIGHT.add(vd.id);
     try {
       const f = new File([blob], (vd && vd.name) || 'clip.mp4', { type: (blob && blob.type) || 'video/mp4' });
       const fd = new FormData();
@@ -1093,6 +1138,7 @@
       vd.ytState = 'err'; vd.ytErr = (j && (j.detail || j.error)) || ('HTTP ' + r.status);
       return false;
     } catch (e) { vd.ytState = 'err'; vd.ytErr = String((e && e.message) || e); return false; }
+    finally { YT_INFLIGHT.delete(vd.id); }
   }
   window.DiaryUI = { edValue, mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, ytUploadBlob, BGS };
 })();

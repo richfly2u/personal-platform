@@ -846,7 +846,9 @@ function diaryVidHtml(v) {
   const cap = String(v.caption || '').trim();
   const dur = Number(v.dur) || 0;
   const ytBox = v.yt
-    ? `<div class="dm-yt"><iframe src="https://www.youtube.com/embed/${v.yt}" loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe></div>`
+    ? `<div class="dm-yt yt-lite" data-yt="${v.yt}">
+         <button type="button" class="yt-lite-cover" aria-label="播放" style="background-image:url(https://i.ytimg.com/vi/${v.yt}/hqdefault.jpg)"><span class="yt-lite-play"></span></button>
+       </div>`
     : `<video data-vmid="${v.id}" controls playsinline preload="metadata" poster="${v.poster || ''}"></video>`;
   return `<figure class="dm-fig dm-vfig" data-vid="${v.id}">
     ${ytBox}
@@ -855,7 +857,6 @@ function diaryVidHtml(v) {
       <button type="button" data-mv="up" data-id="${v.id}" data-kind="vid" aria-label="上移">↑</button>
       <button type="button" data-mv="down" data-id="${v.id}" data-kind="vid" aria-label="下移">↓</button>
       <button type="button" data-vcapedit="${v.id}">說明</button>
-      ${v.yt ? `<button type="button" data-ytopen="${v.yt}">YouTube</button>` : `<button type="button" data-ytup="${v.id}">☁ 上傳</button>`}
       <button type="button" data-viddel="${v.id}">刪除</button>
     </div>
   </figure>`;
@@ -922,6 +923,7 @@ function openDiaryRead(itemId) {
   el.classList.add('show');
   el.querySelector('#dcReadBody').dataset.item = it.id;
   renderDiaryRead(it);
+  try { if (window.__ppAutoYtOnce) window.__ppAutoYtOnce(); } catch (e) {}
 }
 
 function renderDiaryRead(it) {
@@ -1401,6 +1403,7 @@ function toggleDiaryExpand(id) {
   else { diaryExpanded.clear(); diaryExpanded.add(id); }
   diaryRefreshCards();
   hydrateDiaryMedia(document.getElementById('diaryCards'));
+  try { if (window.__ppAutoYtOnce) window.__ppAutoYtOnce(); } catch (e) {}
 }
 
 // 卡片內展開的附件：先顯示縮圖，再換成 IndexedDB 原檔
@@ -1567,6 +1570,12 @@ window.__ppAudioFix = function (audioId, sec) {
 };
 
 window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
+window.__ppGetDiary = function () { try { return getItems('diary'); } catch (e) { return []; } };
+window.__ppDiarySave = function () { try { saveData(); } catch (e) {} };
+// 日記有「本機有檔但還沒上 YouTube」的影片時，背景自動補傳（不給前賢按鈕）
+window.__ppAutoYtOnce = function () {
+  try { if (window.__ppYtAutoUploadMissing) window.__ppYtAutoUploadMissing(); } catch (e) {}
+};
 
 // 針對某一支影片補上傳到 YouTube（不公開），完成後日記改以嵌入呈現
 window.__ppDiaryYtUpload = async function (vid) {
@@ -1593,6 +1602,24 @@ window.__ppDiaryYtUpload = async function (vid) {
 document.addEventListener('click', function (e) {
   const t = e.target && e.target.closest ? e.target : null;
   if (!t) return;
+  // 乾淨播放：點封面才載入 YouTube 播放器（未播前不顯示任何 YouTube 字樣）
+  const cov = t.closest('.yt-lite-cover');
+  if (cov) {
+    e.preventDefault(); e.stopPropagation();
+    const box = cov.closest('.yt-lite');
+    const yid = box && box.getAttribute('data-yt');
+    if (box && yid) {
+      const fr = document.createElement('iframe');
+      fr.src = 'https://www.youtube-nocookie.com/embed/' + yid + '?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3';
+      fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      fr.allowFullscreen = true;
+      fr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      box.classList.add('playing');
+      box.innerHTML = '';
+      box.appendChild(fr);
+    }
+    return;
+  }
   const up = t.closest('[data-ytup]');
   if (up) { e.preventDefault(); window.__ppDiaryYtUpload(up.getAttribute('data-ytup')); return; }
   const op = t.closest('[data-ytopen]');
