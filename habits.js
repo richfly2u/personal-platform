@@ -231,7 +231,7 @@
 .hb-mask{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;z-index:40}
 .hb-mask.on{display:block}
 .hb-sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);border-radius:16px 16px 0 0;max-height:90vh;overflow:auto;
-  transform:translateY(102%);transition:transform .22s ease;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  transform:translateY(102%);transition:transform .22s ease;padding-bottom:calc(96px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
 .hb-sheet.on{transform:translateY(0)}
 .hb-foot{position:sticky;bottom:0;z-index:6;background:var(--card);padding:10px 14px 8px;margin:0 -14px;box-shadow:0 -10px 14px rgba(0,0,0,.06)}
 .hb-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 4px}
@@ -298,7 +298,7 @@
         <button class="hb-chip on" data-kind="check">打勾</button>
         <button class="hb-chip" data-kind="count">數字累計</button>
         <button class="hb-chip" data-kind="timer">計時</button>
-      </div></div>
+      </div><div class="s" id="hbKindHint" style="font-size:.7rem;color:var(--text2);margin-top:6px"></div></div>
       <div class="hb-fld" id="hbTargetWrap" style="display:none">
         <label>每日目標</label>
         <div class="hb-2"><input class="hb-inp" id="hbTarget" type="number" inputmode="decimal" step="any" placeholder="例如 2000">
@@ -489,9 +489,22 @@
     $("#hbKind").querySelectorAll("[data-kind]").forEach(b => b.classList.toggle("on", b.dataset.kind === draft.kind));
     $("#hbTargetWrap").style.display = draft.kind === "check" ? "none" : "block";
     $("#hbTargetHint").textContent = draft.kind === "timer" ? "計時以秒記錄，目標請填分鐘（例 30）" : "每次記錄會累加，達到目標即完成";
+    const kw = $("#hbKindHint");
+    if (kw) kw.textContent = draft.kind === "check" ? "要設每日目標或單位（例如喝水 2000 ml），請選「數字累計」或「計時」" : "";
     if (draft.kind === "timer") { $("#hbUnit").disabled = true; $("#hbUnit").value = ""; $("#hbTarget").value = Math.round((draft.target > 60 ? draft.target : 1800) / 60); }
     else if (draft.kind === "count") { $("#hbUnit").disabled = false; $("#hbTarget").value = draft.target > 1 ? draft.target : ""; $("#hbUnit").value = draft.unit || ""; }
     else $("#hbUnit").disabled = false;
+  }
+  // 切換記錄方式後，把「每日目標／單位」自動捲到看得見的位置（面板很長時尤其需要）
+  function revealTarget() {
+    try {
+      const sh = $("#hbSheet"), w = $("#hbTargetWrap");
+      if (!sh || !w || w.style.display === "none") return;
+      const shb = sh.getBoundingClientRect(), wb = w.getBoundingClientRect();
+      if (wb.top >= shb.top + 8 && wb.bottom <= shb.bottom - 110) return;
+      const top = sh.scrollTop + (wb.top - shb.top) - 90;
+      sh.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    } catch (e) {}
   }
   function paintFreq() {
     const t = (draft.freq || {}).type || "daily";
@@ -630,9 +643,9 @@
         $("#hbName").value = draft.name;
         $("#hbEmoji").querySelectorAll(".hb-chip").forEach(c => c.classList.toggle("on", c.dataset.em === draft.emoji));
         $("#hbColor").querySelectorAll("button").forEach(c => c.classList.toggle("on", c.dataset.col === draft.color));
-        paintKind(); return;
+        paintKind(); revealTarget(); return;
       }
-      if (t.dataset.kind) { draft.kind = t.dataset.kind; paintKind(); return; }
+      if (t.dataset.kind) { draft.kind = t.dataset.kind; paintKind(); revealTarget(); return; }
       if (t.dataset.f) { draft.freq.type = t.dataset.f; paintFreq(); return; }
       if (t.dataset.wd !== undefined && t.dataset.wd !== "") {
         const i = Number(t.dataset.wd); draft.freq.days = draft.freq.days || [];

@@ -2004,6 +2004,11 @@ function goTab(tabId) {
   renderAll();
   // 切到收支頁 → 立刻要 VPS 去財政部抓一次最新的（2026-09-27 前賢要求）
   if (tabId === 'expense') refreshInvoicesFromVps();
+  // 自訂類別：提示可長按刪除
+  if (String(tabId || '').indexOf('cat_') === 0) {
+    const c = (appData.categories || []).find(x => x.id === tabId);
+    try { tipToast('長按底部的「' + ((c && c.name) || '類別') + '」圖示即可刪除'); } catch (e) {}
+  }
 }
 
 // 回首頁
@@ -2035,6 +2040,26 @@ function renderNav() {
 
   nav.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => goTab(btn.dataset.tab));
+    // 自訂類別：長按 0.6 秒可刪除（新增類別在「更多」的 ＋）
+    if (String(btn.dataset.tab || '').indexOf('cat_') === 0) {
+      let lpTimer = null, lpFired = false;
+      const startLP = () => {
+        lpFired = false;
+        lpTimer = setTimeout(() => {
+          lpFired = true;
+          deleteCategory(btn.dataset.tab);
+        }, 600);
+      };
+      const cancelLP = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+      btn.addEventListener('touchstart', startLP, { passive: true });
+      btn.addEventListener('touchend', cancelLP);
+      btn.addEventListener('touchmove', cancelLP);
+      btn.addEventListener('mousedown', startLP);
+      btn.addEventListener('mouseup', cancelLP);
+      btn.addEventListener('mouseleave', cancelLP);
+      btn.addEventListener('contextmenu', e => { e.preventDefault(); deleteCategory(btn.dataset.tab); });
+      btn.addEventListener('click', e => { if (lpFired) { e.stopPropagation(); e.preventDefault(); lpFired = false; } }, true);
+    }
   });
 
   nav.querySelector('.add-cat-btn').addEventListener('click', () => {
@@ -2618,6 +2643,21 @@ function addCategory() {
   currentTab = id;
   saveData();
   renderAll();
+}
+
+// 刪除自訂類別（含該類別底下的項目）
+function deleteCategory(id) {
+  const cat = (appData.categories || []).find(c => c.id === id);
+  if (!cat) return;
+  const n = ((appData.items || {})[id] || []).length;
+  const msg = '刪除類別「' + cat.name + '」？' + (n ? '裡面 ' + n + ' 筆內容也會一起刪除。' : '');
+  if (!confirm(msg)) return;
+  appData.categories = (appData.categories || []).filter(c => c.id !== id);
+  if (appData.items) delete appData.items[id];
+  if (currentTab === id) currentTab = (appData.categories[0] && appData.categories[0].id) || 'todo';
+  saveData();
+  renderAll();
+  try { tipToast('已刪除類別「' + cat.name + '」'); } catch (e) {}
 }
 
 // === 全站搜尋：搜尋待辦、日記、收支、靈感及自訂分類 ===
