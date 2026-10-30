@@ -69,7 +69,7 @@
     s.id = "dmed-style";
     s.textContent = `
 .dt-bar{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px 0 2px;align-items:center}
-.dt-bar .dt-btn{border:0!important;background:transparent!important;box-shadow:none!important;padding:8px 0!important;color:var(--text2)!important;text-align:center;line-height:1;min-width:0}
+.dt-bar .dt-btn{border:0!important;background:transparent!important;box-shadow:none!important;padding:9px 0 2px!important;color:var(--text2)!important;text-align:center;line-height:1;min-width:0}
 .dt-bar .dt-btn svg{width:22px;height:22px;display:block;margin:0 auto}
 .dt-bar .dt-btn:active{color:var(--accent)!important}
 .dt-bar .dt-btn.rec{color:#dc2626!important}
