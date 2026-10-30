@@ -1146,18 +1146,21 @@ li.diary-li { position: relative; margin-bottom: 22px; }
 .q-badge {
   width: 22px; height: 22px;
   border: 0;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #fff;
+  border-radius: 0;
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #dc2626;
   flex: 0 0 auto;
   cursor: pointer;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
-.q-badge.q1 { background: #dc2626; }
-.q-badge.q2 { background: #f59e0b; }
-.q-badge.q3 { background: #2563eb; }
-.q-badge.q4 { background: #9ca3af; }
+/* 紅星＝重要（★）；不重要顯示空心 ☆ */
+.q-badge.q3, .q-badge.q4 { color: #c3c9d2; }
 
 /* 打勾：漸閃淡出 */
 @keyframes todoFadeOut {

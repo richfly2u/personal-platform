@@ -46,7 +46,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '60';
+const APP_VERSION = '61';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -1719,7 +1719,7 @@ function renderItem(cat, it) {
         <span class="todo-check ${it.completed?'done':''}" data-id="${it.id}">✓</span>
         <span class="todo-text ${it.completed?'done':''}" style="flex:1"><span class="todo-marker">▸</span>${escHtml(it.text)}</span>
         ${it.due ? `<span class="due-chip" title="截止日">截止 ${escHtml(it.due)}</span>` : ''}
-        <button class="q-badge q${q}" data-id="${it.id}" title="優先級：1 重要且緊急 / 2 重要不緊急 / 3 緊急不重要 / 4 不重要不緊急（點一下切換）">${q}</button>
+        <button class="q-badge q${q}" data-id="${it.id}" aria-label="優先級 ${q}" title="${q<=2 ? '重要' : '一般'}（點一下切換優先級）">${q<=2 ? '★' : '☆'}</button>
         <span class="todo-date" title="建立日期">${it.date||''}</span>
         <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
         <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
