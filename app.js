@@ -1765,7 +1765,7 @@ function renderPieChart(catSum) {
 }
 
 // === 習慣：直接用舊版（kindhome.net/habits），資料就在舊站本機，免搬移 ===
-const LEGACY_HABITS_URL = 'https://kindhome.net/habits/';
+const LEGACY_HABITS_URL = DASH_URL;   // 前賢慣用的舊版＝養成好習慣儀表板
 function renderLegacyHabits() {
   const main = document.getElementById('main');
   if (!main) return;
@@ -1773,10 +1773,10 @@ function renderLegacyHabits() {
   main.innerHTML = `
     <div class="lh-wrap">
       <div class="lh-bar">
-        <span>習慣打卡（舊版）</span>
+        <span>養成好習慣（舊版儀表板）</span>
         <a href="${LEGACY_HABITS_URL}" target="_blank" rel="noopener">用新分頁開啟</a>
       </div>
-      <iframe id="hbLegacy" src="${LEGACY_HABITS_URL}" title="習慣打卡（舊版）"></iframe>
+      <iframe id="hbLegacy" src="${LEGACY_HABITS_URL}" title="養成好習慣儀表板"></iframe>
     </div>`;
 }
 
