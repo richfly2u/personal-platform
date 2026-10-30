@@ -838,13 +838,17 @@ function diaryMixedHtml(it) {
 function diaryVidHtml(v) {
   const cap = String(v.caption || '').trim();
   const dur = Number(v.dur) || 0;
+  const ytBox = v.yt
+    ? `<div class="dm-yt"><iframe src="https://www.youtube.com/embed/${v.yt}" loading="lazy" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe></div>`
+    : `<video data-vmid="${v.id}" controls playsinline preload="metadata" poster="${v.poster || ''}"></video>`;
   return `<figure class="dm-fig dm-vfig" data-vid="${v.id}">
-    <video data-vmid="${v.id}" controls playsinline preload="metadata" poster="${v.poster || ''}"></video>
+    ${ytBox}
     <figcaption class="dm-cap${cap ? '' : ' empty'}" data-vcap="${v.id}">${cap ? escHtml(cap) : '加一句說明…'}</figcaption>
     <div class="dm-tools">
       <button type="button" data-mv="up" data-id="${v.id}" data-kind="vid" aria-label="上移">↑</button>
       <button type="button" data-mv="down" data-id="${v.id}" data-kind="vid" aria-label="下移">↓</button>
       <button type="button" data-vcapedit="${v.id}">說明</button>
+      ${v.yt ? `<button type="button" data-ytopen="${v.yt}">YouTube</button>` : `<button type="button" data-ytup="${v.id}">☁ 上傳</button>`}
       <button type="button" data-viddel="${v.id}">刪除</button>
     </div>
   </figure>`;
@@ -1531,6 +1535,37 @@ window.__ppAudioFix = function (audioId, sec) {
 };
 
 window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
+
+// 針對某一支影片補上傳到 YouTube（不公開），完成後日記改以嵌入呈現
+window.__ppDiaryYtUpload = async function (vid) {
+  try {
+    const arr = getItems('diary');
+    let hit = null, vd = null;
+    for (const it of arr) {
+      const v = (it.videos || []).find(x => x.id === vid);
+      if (v) { hit = it; vd = v; break; }
+    }
+    if (!vd) { tipToast('找不到這支影片'); return; }
+    if (vd.yt) { tipToast('這支已經在 YouTube：' + vd.yt); return; }
+    const blob = await (window.__ppDiaryBlob && window.__ppDiaryBlob.get ? window.__ppDiaryBlob.get(vid) : Promise.resolve(null));
+    if (!blob) { tipToast('本機已沒有這支影片檔，無法上傳'); return; }
+    tipToast('上傳 YouTube 中…（不公開）');
+    if (window.DiaryUI && window.DiaryUI.ytUploadBlob) {
+      const ok = await window.DiaryUI.ytUploadBlob(hit, vd, blob);
+      try { saveData(); } catch (e) {}
+      renderMain();
+      tipToast(ok ? '已上傳 YouTube，日記改用嵌入播放' : '上傳失敗，稍後再試');
+    }
+  } catch (e) { tipToast('上傳失敗'); }
+};
+document.addEventListener('click', function (e) {
+  const t = e.target && e.target.closest ? e.target : null;
+  if (!t) return;
+  const up = t.closest('[data-ytup]');
+  if (up) { e.preventDefault(); window.__ppDiaryYtUpload(up.getAttribute('data-ytup')); return; }
+  const op = t.closest('[data-ytopen]');
+  if (op) { e.preventDefault(); window.open('https://www.youtube.com/watch?v=' + op.getAttribute('data-ytopen'), '_blank'); return; }
+});
 
 window.__ppDiaryUpsert = function (text, extras) {
   try {

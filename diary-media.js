@@ -32,6 +32,43 @@
     stop: SVG('<rect x="7.2" y="7.2" width="9.6" height="9.6" rx="2" fill="currentColor" stroke="none"/>')
   };
 
+  // ==== 影片自動上傳到前賢的 YouTube 頻道（不公開），日記改用嵌入呈現（2026-10-30） ====
+  // 服務在 kindhome.net/diary-yt（VPS，systemd diary-yt，FastAPI），配額上限每天 6 支
+  const YT_API = 'https://kindhome.net/diary-yt';
+  const YT_KEY = 'sV9q8JzI2r_OYzHqjxLYnSTGgqxguHZg';
+  function ytTitle() {
+    const first = String(liveText || '').split('\n').map(x => x.trim()).filter(Boolean)[0] || '日記影片';
+    const d = new Date();
+    const stamp = (d.getMonth()+1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return ('日記 ' + stamp + ' ' + first).slice(0, 92);
+  }
+  async function ytUploadVideo(vd, file) {
+    if (!vd || !file) return;
+    vd.ytState = 'up';
+    if (typeof paint === 'function') try { paint(); } catch (e) {}
+    try {
+      const fd = new FormData();
+      fd.append('file', file, file.name || 'clip.mp4');
+      fd.append('title', ytTitle());
+      fd.append('privacy', 'unlisted');
+      const r = await fetch(YT_API + '/upload', { method: 'POST', headers: { 'X-Key': YT_KEY }, body: fd });
+      let j = null;
+      try { j = await r.json(); } catch (e) {}
+      if (j && j.ok && j.id) { vd.yt = j.id; vd.ytState = 'ok'; delete vd.ytErr; }
+      else { vd.ytState = 'err'; vd.ytErr = (j && (j.detail || j.error)) || ('HTTP ' + r.status); }
+    } catch (e) {
+      vd.ytState = 'err'; vd.ytErr = String((e && e.message) || e);
+    }
+    try { if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft); } catch (e) {}
+    // 上傳完成 → 把那支影片的畫面就地換成 YouTube 嵌入（不動其他內容）
+    try {
+      const fig = inputEl && inputEl.querySelector('figure[data-vid="' + vd.id + '"]');
+      if (fig && vd.yt) { const nf = buildVid(vd.id); if (nf) fig.replaceWith(nf); }
+    } catch (e) {}
+    if (typeof paint === 'function') try { paint(); } catch (e) {}
+    if (vd.ytState === 'err') toast('上傳 YouTube 失敗：' + (vd.ytErr || ''));
+  }
+
   let dbp = null;
   function openDB() {
     if (dbp) return dbp;
@@ -400,6 +437,22 @@
     if (!vd) return null;
     const fig = document.createElement('figure');
     fig.className = 'ed-fig ed-vid'; fig.dataset.vid = id; fig.contentEditable = 'false';
+    if (vd.yt) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ed-yt';
+      const fr = document.createElement('iframe');
+      fr.src = 'https://www.youtube.com/embed/' + vd.yt;
+      fr.loading = 'lazy';
+      fr.allow = 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      fr.allowFullscreen = true;
+      fr.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      wrap.appendChild(fr);
+      const cap0 = document.createElement('figcaption');
+      cap0.className = 'ed-cap'; cap0.contentEditable = 'true'; cap0.dataset.vcap = id;
+      cap0.textContent = vd.caption || '';
+      fig.appendChild(wrap); fig.appendChild(cap0);
+      return fig;
+    }
     const v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.preload = 'metadata';
     if (vd.poster) v.poster = vd.poster;
@@ -593,10 +646,12 @@
         const id = uid();
         await putBlob(id, f);
         // 先內嵌，不等解碼：手機上延遲才不會卡住
-        draft.videos.push({ id, name: f.name || '影片', dur: 0, poster: '', caption: '' });
+        const vdNew = { id, name: f.name || '影片', dur: 0, poster: '', caption: '' };
+        draft.videos.push(vdNew);
         insertVidMarker(id);
         paint();
         if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+        ytUploadVideo(vdNew, f);   // 自動上傳到 YouTube（不公開），完成後就地換成嵌入播放
         // 背景補長度與海報
         videoMeta(f).then(meta => {
           const vd = (draft.videos || []).find(x => x.id === id);
@@ -1019,5 +1074,19 @@
 
   window.__ppDiaryBlob = { get: getBlob, put: putBlob };
   window.__ppDiaryEd = { value: edValue, set: edSet };
-  window.DiaryUI = { edValue, mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
+  async function ytUploadBlob(item, vd, blob) {
+    try {
+      const f = new File([blob], (vd && vd.name) || 'clip.mp4', { type: (blob && blob.type) || 'video/mp4' });
+      const fd = new FormData();
+      fd.append('file', f, f.name);
+      fd.append('title', ytTitle());
+      fd.append('privacy', 'unlisted');
+      const r = await fetch(YT_API + '/upload', { method: 'POST', headers: { 'X-Key': YT_KEY }, body: fd });
+      let j = null; try { j = await r.json(); } catch (e) {}
+      if (j && j.ok && j.id) { vd.yt = j.id; vd.ytState = 'ok'; delete vd.ytErr; return true; }
+      vd.ytState = 'err'; vd.ytErr = (j && (j.detail || j.error)) || ('HTTP ' + r.status);
+      return false;
+    } catch (e) { vd.ytState = 'err'; vd.ytErr = String((e && e.message) || e); return false; }
+  }
+  window.DiaryUI = { edValue, mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, ytUploadBlob, BGS };
 })();

@@ -2145,3 +2145,7 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 .lh-bar { display: flex; align-items: center; justify-content: space-between; font-size: .8rem; color: #8A8378; padding: 0 2px; }
 .lh-bar a { color: #5F7C59; text-decoration: none; font-size: .78rem; border-bottom: 1px solid rgba(95,124,89,.35); }
 #hbLegacy { width: 100%; height: calc(100vh - 132px); min-height: 460px; border: 0; background: #fff; }
+/* ==== 日記影片改以 YouTube 嵌入呈現（不公開），跨裝置也看得到（2026-10-30） ==== */
+.dm-yt, .ed-yt { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
+.dm-yt iframe, .ed-yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.ed-vmiss { padding: 18px 12px; text-align: center; font-size: 13px; color: #8b7d6b; background: #f7f1e6; border-radius: 12px; }
