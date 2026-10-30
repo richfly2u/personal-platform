@@ -2081,3 +2081,7 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 .dsearch-wrap input::placeholder { color: #B7AC9C; }
 .dsearch-toggle { flex: none; width: 28px; height: 28px; }
 .dbar { display: none !important; }
+
+/* 搜尋中：收起輸入卡片，結果直接顯示在標題下方 */
+.tab-content.searching .add-form { display: none !important; }
+.tab-content.searching #itemList { margin-top: 2px; }

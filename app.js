@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '80';
+const APP_VERSION = '81';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -1442,11 +1442,20 @@ function diaryJumpToResults() {
     html.style.scrollBehavior = prev;
   } catch (e) {}
 }
+// 搜尋中就把輸入框那一大塊收起來，結果直接頂到上面
+function diarySearchMode(on) {
+  try {
+    const tc = document.querySelector('.tab-content.active');
+    if (tc) tc.classList.toggle('searching', !!on);
+  } catch (e) {}
+}
 document.addEventListener('input', function (e) {
   if (e.target && e.target.id === 'diarySearch') {
     diaryQuery = e.target.value;
     diaryRefreshCards();
-    if (diaryQuery.trim()) setTimeout(diaryJumpToResults, 40);
+    const on = !!diaryQuery.trim();
+    diarySearchMode(on);
+    setTimeout(() => { diaryJumpToResults(); if (!on) window.scrollTo(0, 0); }, 40);
   }
 });
 document.addEventListener('keydown', function (e) {
@@ -1454,6 +1463,7 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault();
     diaryQuery = e.target.value;
     diaryRefreshCards();
+    diarySearchMode(!!diaryQuery.trim());
     setTimeout(diaryJumpToResults, 40);
     try { e.target.blur(); } catch (err) {}
   }
