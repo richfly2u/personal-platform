@@ -28,6 +28,7 @@
     image: SVG('<rect x="3.4" y="4.2" width="12.6" height="12.6" rx="2.2"/><circle cx="7.6" cy="8.6" r="1.3"/><path d="M4 14.4l3.9-3.3 3.4 2.9"/><path d="M19 13.8v6.4M15.8 17h6.4"/>'),
     smile: SVG('<circle cx="12" cy="12" r="8.6"/><path d="M9 10.2h.01M15 10.2h.01"/><path d="M8.4 14.4a4.6 4.6 0 0 0 7.2 0"/>'),
     palette: SVG('<path d="M12 3.4a8.6 8.6 0 0 0 0 17.2c1.5 0 2.1-.9 2.1-1.9 0-1.6 1-2.3 2.3-2.3h1.5a2.8 2.8 0 0 0 2.8-2.8 8.7 8.7 0 0 0-8.7-10.2z"/><circle cx="8.4" cy="10.2" r=".95"/><circle cx="12" cy="7.6" r=".95"/><circle cx="15.6" cy="10.2" r=".95"/>'),
+    film: SVG('<rect x="3.2" y="5.2" width="12.6" height="13.6" rx="2.4"/><path d="M15.8 10.2l4.6-2.9v9.4l-4.6-2.9z"/><path d="M6.6 5.2v13.6M12.4 5.2v13.6"/>'),
     stop: SVG('<rect x="7.2" y="7.2" width="9.6" height="9.6" rx="2" fill="currentColor" stroke="none"/>')
   };
 
@@ -68,7 +69,7 @@
     const s = document.createElement("style");
     s.id = "dmed-style";
     s.textContent = `
-.dt-bar{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px 0 2px;align-items:center}
+.dt-bar{display:grid;grid-template-columns:repeat(9,1fr);gap:0;padding:6px 0 2px;align-items:center}
 .dt-bar .dt-btn{border:0!important;background:transparent!important;box-shadow:none!important;padding:9px 0 2px!important;color:var(--text2)!important;text-align:center;line-height:1;min-width:0}
 .dt-bar .dt-btn svg{width:22px;height:22px;display:block;margin:0 auto}
 .dt-bar .dt-btn:active{color:var(--accent)!important}
@@ -138,7 +139,7 @@
 
   let draft = null;
   const empty = () => ({ images: [], videos: [], audio: null, bg: "none", rows: [], sketch: null, size: "" });
-  let toolsEl = null, inputEl = null, popEl = null, fileEl = null;
+  let toolsEl = null, inputEl = null, popEl = null, fileEl = null, videoEl = null;
 
   function mount(formEl, catId) {
     if (catId !== "diary" || !formEl) return;
@@ -156,6 +157,7 @@
         <button type="button" class="dt-btn" data-dt="dict" title="聽寫" aria-label="聽寫">${IC.wave}</button>
         <button type="button" class="dt-btn" data-dt="sketch" title="手寫" aria-label="手寫">${IC.pen}</button>
         <button type="button" class="dt-btn" data-dt="photo" title="照片" aria-label="照片">${IC.image}</button>
+        <button type="button" class="dt-btn" data-dt="video" title="影片" aria-label="影片">${IC.film}</button>
         <button type="button" class="dt-btn" data-dt="emoji" title="表情" aria-label="表情">${IC.smile}</button>
         <button type="button" class="dt-btn" data-dt="bg" title="背景" aria-label="背景">${IC.palette}</button>
       </div>
@@ -166,13 +168,19 @@
       </div>
       <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span></div>
       <div class="dt-pop" id="dtPop"></div>
-      <input type="file" id="dtFile" accept="image/*,video/*" multiple style="display:none">`;
+      <input type="file" id="dtFile" accept="image/*,video/*" multiple style="display:none">
+      <input type="file" id="dtFileVid" accept="video/*" multiple style="display:none">`;
     const host = formEl.querySelector("#diaryTools") || formEl;
     host.appendChild(toolsEl);
     popEl = toolsEl.querySelector("#dtPop");
     fileEl = toolsEl.querySelector("#dtFile");
     toolsEl.addEventListener("click", onClick);
     fileEl.addEventListener("change", e => { addImages([...e.target.files]); e.target.value = ""; });
+    videoEl = toolsEl.querySelector("#dtFileVid");
+    videoEl.addEventListener("change", e => {
+      const files = [...e.target.files]; e.target.value = "";
+      if (files.length) addVideos(files);   // 從「影片」入口選的一律當影片（Android 可能不給 mime）
+    });
 
     // ① 自動補日期（聚焦即補），② 隨寫隨存（草稿自動保存／還原）
     restoreDraft();
@@ -800,6 +808,7 @@
     if (!b) return;
     const act = b.dataset.dt;
     if (act === "photo") fileEl.click();
+    else if (act === "video") { if (videoEl) videoEl.click(); }
     else if (act === "rec") { rec ? stopRec() : startRec(); }
     else if (act === "dict") dictate();
     else if (act === "sketch") openSketch();
