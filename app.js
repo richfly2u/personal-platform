@@ -46,7 +46,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '61';
+const APP_VERSION = '62';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -67,6 +67,8 @@ let editingId = null;  // 目前正在編輯的項目 id
 let newQuad = 1;
 let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let diaryFresh = false;  // 進入日記頁一律從空白開始（前賢 2026-10-30 要求）
+let diaryMood = '';      // 日記心情（奶油日常，2026-10-30）
+const DIARY_MOODS = ['平靜', '溫暖', '有點累', '踏實', '感恩'];
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
@@ -704,6 +706,148 @@ document.addEventListener('click', function (e) {
   li.classList.toggle('acting');
 });
 
+// ===== 奶油日常（方案 C）：日記頁統計、心情、AI 回顧（2026-10-30）=====
+function diaryStatsHtml() {
+  try {
+    const arr = getItems('diary');
+    const photos = arr.reduce((n, i) => n + ((i.images || []).length || 0), 0);
+    // 連續紀錄：以 date（M/D 或含年份）換算日期，往前數連續天數
+    const days = new Set();
+    arr.forEach(i => {
+      const m = String(i.date || '').match(/(\d{1,2})\s*[\/月]\s*(\d{1,2})/);
+      if (m) days.add(m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0'));
+    });
+    let streak = 0;
+    const d = new Date();
+    for (let k = 0; k < 400; k++) {
+      const key = String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      if (days.has(key)) streak++;
+      else if (k > 0) break;
+      d.setDate(d.getDate() - 1);
+    }
+    return `<span><b>${arr.length}</b> 篇日記</span><i></i><span><b>${photos}</b> 張照片</span><i></i><span>連續 <b>${streak}</b> 天</span>`;
+  } catch (e) { return '<span>開始寫下第一篇吧</span>'; }
+}
+
+// 心情 chips：點一下選／取消；新的一則歸零
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const m = t.closest('.dc-mood');
+  if (m) {
+    const v = m.dataset.mood || '';
+    diaryMood = (diaryMood === v) ? '' : v;
+    document.querySelectorAll('.dc-mood').forEach(b => b.classList.toggle('on', b.dataset.mood === diaryMood));
+    return;
+  }
+  if (t.closest('#diaryAiBtn')) { openDiaryAI(); }
+});
+
+// ---- AI 回顧（DeepSeek 直連；金鑰只存在這台裝置，不進版控）----
+const DS_KEY_LS = 'pp.deepseek.key';
+function dsKey() { try { return localStorage.getItem(DS_KEY_LS) || ''; } catch (e) { return ''; } }
+
+function diaryAIContext() {
+  return getItems('diary').slice(0, 20).map(i => {
+    const d = String(i.date || '').replace(/\s+/g, ' ');
+    const mood = i.mood ? `（${i.mood}）` : '';
+    const txt = String(i.text || '').replace(/\s+/g, ' ').slice(0, 200);
+    return txt ? `[${d}]${mood} ${txt}` : '';
+  }).filter(Boolean).join('\n');
+}
+
+function openDiaryAI() {
+  let el = document.getElementById('dcAi');
+  if (el) { el.classList.add('show'); return; }
+  el = document.createElement('div');
+  el.id = 'dcAi';
+  el.className = 'dc-ai show';
+  el.innerHTML = `
+    <div class="dc-ai-mask"></div>
+    <div class="dc-ai-card">
+      <div class="dc-ai-head"><b>拾光 AI</b><span class="dc-ai-close" id="dcAiClose" aria-label="關閉">✕</span></div>
+      <div class="dc-ai-chips">
+        ${['回顧這個月', '這週的重點', '幫我整理成一段話'].map(s => `<button type="button" class="dc-chip" data-q="${s}">${s}</button>`).join('')}
+      </div>
+      <div class="dc-ai-body" id="dcAiBody"></div>
+      <div class="dc-ai-in"><input id="dcAiInput" type="text" placeholder="問問你的日記…"><button type="button" id="dcAiGo">送出</button></div>
+    </div>`;
+  document.body.appendChild(el);
+  el.querySelector('#dcAiClose').addEventListener('click', () => el.classList.remove('show'));
+  el.querySelector('.dc-ai-mask').addEventListener('click', () => el.classList.remove('show'));
+  el.querySelector('#dcAiGo').addEventListener('click', () => {
+    const inp = el.querySelector('#dcAiInput');
+    const q = String(inp.value || '').trim();
+    if (q) { inp.value = ''; diaryAIAsk(q); }
+  });
+  el.querySelector('#dcAiInput').addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); el.querySelector('#dcAiGo').click(); }
+  });
+  el.querySelectorAll('.dc-chip').forEach(b => b.addEventListener('click', () => diaryAIAsk(b.dataset.q)));
+  if (!dsKey()) diaryAIKeyPrompt();
+}
+
+function dcAiAdd(who, html) {
+  const body = document.getElementById('dcAiBody');
+  if (!body) return null;
+  const d = document.createElement('div');
+  d.className = 'dc-ai-msg ' + who;
+  d.innerHTML = html;
+  body.appendChild(d);
+  body.scrollTop = body.scrollHeight;
+  return d;
+}
+
+function diaryAIKeyPrompt() {
+  dcAiAdd('ai', '要開始回顧，需要先貼上 DeepSeek 的 API key。<br><span class="dc-hint">金鑰只存在這台裝置（localStorage），不會上傳、也不會進版本控制。</span>');
+  const body = document.getElementById('dcAiBody');
+  const box = document.createElement('div');
+  box.className = 'dc-ai-keybox';
+  box.innerHTML = '<input id="dcKeyIn" type="password" placeholder="sk-..."><button type="button" id="dcKeySave">儲存</button>';
+  body.appendChild(box);
+  box.querySelector('#dcKeySave').addEventListener('click', () => {
+    const v = String(box.querySelector('#dcKeyIn').value || '').trim();
+    if (!v) return;
+    try { localStorage.setItem(DS_KEY_LS, v); } catch (e) {}
+    box.remove();
+    dcAiAdd('ai', '金鑰已存在這台裝置。可以開始問了。');
+  });
+}
+
+async function diaryAIAsk(q) {
+  dcAiAdd('user', escHtml(q));
+  const key = dsKey();
+  if (!key) { diaryAIKeyPrompt(); return; }
+  const pending = dcAiAdd('ai', '<span class="dc-wait">整理日記中…</span>');
+  const ctx = diaryAIContext();
+  try {
+    const r = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        temperature: 0.6,
+        max_tokens: 700,
+        messages: [
+          { role: 'system', content: '你是「拾光日記」的 AI 助理，用繁體中文、溫暖但不浮誇的語氣回覆。只根據使用者提供的日記內容整理，不要編造沒發生的事。若有引用，請標出日期（例如 10/29）。回覆 120 字以內為原則。' },
+          { role: 'user', content: `以下是我最近的日記：\n${ctx || '（目前沒有日記內容）'}\n\n我的問題：${q}` }
+        ]
+      })
+    });
+    const data = await r.json();
+    const text = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+    if (!r.ok || !text) {
+      const msg = (data && data.error && data.error.message) || ('HTTP ' + r.status);
+      if (pending) pending.innerHTML = '讀取失敗：' + escHtml(String(msg).slice(0, 120));
+      return;
+    }
+    const used = getItems('diary').slice(0, 3).map(i => String(i.date || '').slice(0, 5)).filter(Boolean);
+    if (pending) pending.innerHTML = escHtml(text).replace(/\n/g, '<br>') + (used.length ? `<div class="dc-cite">參考：${used.join(' · ')}</div>` : '');
+  } catch (e) {
+    if (pending) pending.innerHTML = '連線失敗：' + escHtml(String(e.message || e));
+  }
+}
+
 // 日記列表只顯示摘要（前賢 2026-10-30：不用全顯示）
 function diarySummary(text, it) {
   const t = String(text || '').replace(/\s+/g, ' ').trim();
@@ -773,6 +917,7 @@ window.__ppDiaryUpsert = function (text, extras) {
       try { localStorage.setItem('diary.currentId', diaryCurId); } catch (e) {}
     }
     it.text = String(text || '');
+    if (diaryMood) it.mood = diaryMood; else delete it.mood;
     if (extras) {
       it.images = extras.images || [];
       it.audio = extras.audio || null;
@@ -1509,7 +1654,12 @@ function renderMain() {
          </div>
        </div>`
     : cat.id === 'diary'
-    ? `<div class="add-form">
+    ? `<div class="add-form diary-cream">
+         <div class="dc-top">
+           <div class="dc-stats" id="dcStats">${diaryStatsHtml()}</div>
+           <button type="button" class="dc-ai-btn" id="diaryAiBtn">${ico('bulb', 14)} AI 回顧</button>
+         </div>
+         <div class="dc-moods" id="dcMoods">${DIARY_MOODS.map(m => `<button type="button" class="dc-mood" data-mood="${m}">${m}</button>`).join('')}</div>
          <div class="add-row">
            <div class="diary-box">
              <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
@@ -1558,11 +1708,14 @@ function renderMain() {
       // 進日記頁 = 空白日記開始：收掉上一筆的暫存（內容本身已存進清單，不會遺失）
       diaryFresh = false;
       diaryCurId = null;
+      diaryMood = '';
       try { localStorage.removeItem('diary.currentId'); } catch (e) {}
       if (window.DiaryUI && window.DiaryUI.clearDraft) window.DiaryUI.clearDraft();
     }
     if (!diaryCurId) { try { diaryCurId = localStorage.getItem('diary.currentId') || null; } catch (e) {} }
     const cur = diaryCurId ? getItems('diary').find(x => x.id === diaryCurId) : null;
+    diaryMood = (cur && cur.mood) || '';
+    main.querySelectorAll('.dc-mood').forEach(b => b.classList.toggle('on', b.dataset.mood === diaryMood));
     if (cur && window.DiaryUI.loadEntry) window.DiaryUI.loadEntry(cur);
     window.DiaryUI.afterRender(main, saveData);   // 含待歸位清單與正式列表
   }

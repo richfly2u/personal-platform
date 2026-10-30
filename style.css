@@ -1811,3 +1811,76 @@ li.todo-li.acting, li.diary-li.acting { background: #fffdf7; }
   #nav { padding-left: 24px; padding-right: 24px; }
   #nav .nav-btn { max-width: 160px; }
 }
+
+/* ===== 奶油日常（方案 C）日記頁：奶油白卡片、心情 chips、統計、AI 回顧 ===== */
+.diary-cream {
+  background: linear-gradient(180deg, #FFFBF4 0%, #FFF6EA 62%, rgba(255,251,244,0) 100%);
+  border-radius: 26px;
+  padding: 14px 14px 16px;
+  margin: 0 0 8px;
+}
+.dc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 2px 12px; }
+.dc-stats { display: flex; align-items: center; gap: 9px; font-size: .74rem; color: #8A8378; }
+.dc-stats b { color: #2B2A28; font-size: .98rem; font-weight: 700; margin-right: 2px; }
+.dc-stats i { width: 1px; height: 11px; background: #EFE3D2; display: block; }
+.dc-ai-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 0; background: #fff; color: #B4791F;
+  font-size: .74rem; font-weight: 700; padding: 8px 13px;
+  border-radius: 999px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(160,130,90,.16);
+}
+.dc-moods { display: flex; gap: 7px; overflow-x: auto; padding: 0 2px 11px; scrollbar-width: none; }
+.dc-moods::-webkit-scrollbar { display: none; }
+.dc-mood {
+  flex: none; border: 1px solid #F1E4D2; background: #FFFDF9; color: #8A8378;
+  font-size: .76rem; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+}
+.dc-mood.on { background: #EFAF58; border-color: #EFAF58; color: #fff; font-weight: 700; }
+.diary-cream .diary-box {
+  background: #fff; border: 1px solid #F7EBDA; border-radius: 22px;
+  box-shadow: 0 10px 26px rgba(170,140,100,.10);
+  padding: 12px 12px 2px;
+}
+.diary-cream #addText { border: 0; background: transparent; font-size: 1rem; line-height: 1.95; }
+.diary-cream .diary-act-row { margin-top: 12px; }
+.diary-cream #diaryAddBtn {
+  background: #EFAF58; border-radius: 999px; padding: 11px 32px;
+  box-shadow: 0 8px 18px rgba(239,175,88,.34);
+}
+
+/* AI 回顧面板 */
+.dc-ai { position: fixed; inset: 0; z-index: 9999; display: none; }
+.dc-ai.show { display: block; }
+.dc-ai-mask { position: absolute; inset: 0; background: rgba(43,42,40,.34); }
+.dc-ai-card {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 84vh;
+  background: #FFFBF4; border-radius: 26px 26px 0 0;
+  display: flex; flex-direction: column;
+  padding: 14px 14px calc(12px + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 40px rgba(60,50,40,.22);
+}
+.dc-ai-head { display: flex; justify-content: space-between; align-items: center; font-size: .95rem; color: #2B2A28; }
+.dc-ai-close { font-size: 1rem; color: #8A8378; padding: 4px 8px; cursor: pointer; }
+.dc-ai-chips { display: flex; gap: 7px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+.dc-ai-chips::-webkit-scrollbar { display: none; }
+.dc-chip {
+  flex: none; border: 1px solid #F1E4D2; background: #fff; color: #8A8378;
+  font-size: .74rem; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+}
+.dc-ai-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 0 10px; }
+.dc-ai-msg { max-width: 90%; font-size: .86rem; line-height: 1.85; padding: 11px 14px; border-radius: 16px; color: #2B2A28; }
+.dc-ai-msg.user { align-self: flex-end; background: #EFAF58; color: #fff; border-bottom-right-radius: 6px; }
+.dc-ai-msg.ai { align-self: flex-start; background: #fff; border: 1px solid #F7EBDA; box-shadow: 0 6px 16px rgba(170,140,100,.08); border-bottom-left-radius: 6px; }
+.dc-cite { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #F1E4D2; font-size: .68rem; color: #A79C8B; }
+.dc-hint { color: #A79C8B; font-size: .72rem; }
+.dc-wait { color: #A79C8B; }
+.dc-ai-in { display: flex; gap: 8px; padding-top: 8px; }
+.dc-ai-in input { flex: 1; border: 1px solid #F1E4D2; background: #fff; border-radius: 999px; padding: 11px 15px; font-size: .86rem; }
+.dc-ai-in button { border: 0; background: #EFAF58; color: #fff; font-weight: 700; border-radius: 999px; padding: 0 20px; font-size: .86rem; cursor: pointer; }
+.dc-ai-keybox { display: flex; gap: 8px; }
+.dc-ai-keybox input { flex: 1; border: 1px solid #F1E4D2; border-radius: 12px; padding: 9px 12px; font-size: .8rem; }
+.dc-ai-keybox button { border: 0; background: #2B2A28; color: #fff; border-radius: 12px; padding: 0 15px; font-size: .8rem; cursor: pointer; }
+@media (min-width: 900px) {
+  .dc-ai-card { left: auto; right: 24px; bottom: 24px; width: 440px; max-height: 72vh; border-radius: 26px; }
+}
