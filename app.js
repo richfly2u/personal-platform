@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '81';
+const APP_VERSION = '82';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -1326,13 +1326,10 @@ function diarySearchHtml() {
 }
 
 function diaryToolbarHtml() {
-  const mChips = [['', '全部']].concat(DIARY_MOODS.map(m => [m, DIARY_MOOD_EMOJI[m]]));
-  const kChips = DIARY_KINDS.map(k => [k, k]);
   return `<div class="dbar">
     <div class="dbar-row">
-      ${mChips.map(c => `<button type="button" class="dfilter${diaryMoodFilter === c[0] ? ' on' : ''}" data-mf="${c[0]}" title="${c[0] || '全部'}">${c[1]}</button>`).join('')}
-      <i class="dbar-sep"></i>
-      ${kChips.map(c => `<button type="button" class="dkfilter${diaryKindFilter === c[0] ? ' on' : ''}" data-kf="${c[0]}">${c[1]}</button>`).join('')}
+      ${[['', '全部']].concat(DIARY_KINDS.map(k => [k, k])).map(c =>
+        `<button type="button" class="dkfilter${diaryKindFilter === c[0] ? ' on' : ''}" data-kf="${c[0]}">${c[1]}</button>`).join('')}
     </div>
   </div>`;
 }
@@ -2297,7 +2294,7 @@ function renderMain() {
     listHtml = isExpense ? '' : (pendingItems.length ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`);
   } else if (cat.id === 'diary') {
     if (diaryFresh) { diaryQuery = ''; diaryMoodFilter = ''; diaryKindFilter = ''; }   // 進日記頁從乾淨狀態開始
-    diaryTopHtml = '';                                            // 篩選列隱藏（前賢 2026-10-30）
+    diaryTopHtml = diaryToolbarHtml();                            // 只留五大屬性的篩選（心情表情不顯示）
     listHtml = `<div id="diaryCards">${diaryCardsHtml(listItems)}</div>`;
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));

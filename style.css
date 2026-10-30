@@ -2085,3 +2085,21 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 /* 搜尋中：收起輸入卡片，結果直接顯示在標題下方 */
 .tab-content.searching .add-form { display: none !important; }
 .tab-content.searching #itemList { margin-top: 2px; }
+
+/* 日記搜尋框：正常的膠囊輸入框，左輸入右放大鏡；屬性篩選列恢復（2026-10-30） */
+.h2-row { display: flex; align-items: center; gap: 12px; }
+.h2-row h2 { flex: none; margin: 0; }
+.dsearch-wrap { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 0;
+  border: 1px solid #EBDFCC; border-radius: 999px; background: #fff; padding: 0 4px 0 12px; height: 34px; }
+.dsearch-wrap input { flex: 1 1 auto; min-width: 0; width: auto; opacity: 1; height: 100%; padding: 0; border: 0;
+  background: transparent; color: inherit; font-size: .84rem; outline: none; }
+.dsearch-wrap input::placeholder { color: #B7AC9C; }
+.dsearch-toggle { flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: #A29684; border-radius: 50%; padding: 0; cursor: pointer; }
+.dsearch-toggle:active { background: #F6EEE2; }
+.dbar { display: block !important; padding: 8px 0 2px; }
+.dbar-row { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.dbar-row::-webkit-scrollbar { display: none; }
+.dbar .dkfilter { flex: none; border: 1px solid #EDE0CB; background: #fff; color: #8A8378; font-size: .74rem;
+  line-height: 1; padding: 6px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.dbar .dkfilter.on { background: #EFF3EC; border-color: #D6E0CF; color: #5F7C59; font-weight: 700; }
