@@ -1567,6 +1567,14 @@ document.addEventListener('click', function (e) {
   if (op) { e.preventDefault(); window.open('https://www.youtube.com/watch?v=' + op.getAttribute('data-ytopen'), '_blank'); return; }
 });
 
+// 目前正在編輯一則「已存在」的日記嗎？（決定按鈕顯示「更改」或「新增」）
+function diaryEditingOld() {
+  try {
+    if (!diaryCurId) return false;
+    return getItems('diary').some(x => x.id === diaryCurId);
+  } catch (e) { return false; }
+}
+
 window.__ppDiaryUpsert = function (text, extras) {
   try {
     const arr = getItems('diary');
@@ -2441,7 +2449,7 @@ function renderMain() {
              <div id="diaryTools"></div>
            </div>
          </div>
-         <div class="diary-act-row"><button type="button" id="diaryAddBtn" aria-label="新增日記">新增</button></div>
+         <div class="diary-act-row"><button type="button" id="diaryAddBtn" aria-label="${diaryEditingOld() ? '更新這則日記' : '新增日記'}">${diaryEditingOld() ? '更改' : '新增'}</button></div>
        </div>`
     : cat.id === 'todo'
     ? `<div class="add-form">
