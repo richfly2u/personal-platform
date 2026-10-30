@@ -1571,6 +1571,31 @@ window.__ppDiaryUpsert = function (text, extras) {
   } catch (e) {}
 };
 
+// 完成目前這一則日記：確保內容真的存下來，然後把輸入框／草稿清空，準備新增下一則
+function finishDiaryEntry(text) {
+  try {
+    const arr = getItems('diary');
+    let cur = diaryCurId ? arr.find(x => x.id === diaryCurId) : null;
+    if (!cur) {
+      const item = { id: uid(), text, date: nowStamp(), ts: Date.now(), source: 'manual', completed: false };
+      if (window.DiaryUI && window.DiaryUI.hasDraft && window.DiaryUI.hasDraft()) Object.assign(item, window.DiaryUI.takeDraft());
+      arr.unshift(item);
+      diaryCurId = item.id;
+      saveData();
+    }
+    renderMain();
+    // 清空輸入框＋草稿＋目前編輯中的那筆指標
+    if (window.DiaryUI && window.DiaryUI.clearDraft) window.DiaryUI.clearDraft();
+    diaryCurId = null;
+    try { localStorage.removeItem('diary.currentId'); } catch (e) {}
+    diaryMood = ''; diaryKind = '';
+    try { renderMain(); } catch (e) {}
+    const ed = document.getElementById('diaryEditor') || document.querySelector('#addText[contenteditable="true"]');
+    if (ed) { try { ed.focus(); ed.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {} }
+    tipToast('已存入日記，可以寫下一則');
+  } catch (e) {}
+}
+
 function submitAddText() {
   clearAutoSave();
   const addText = document.getElementById('addText');
@@ -1579,6 +1604,8 @@ function submitAddText() {
   if (!text) return;
   const cat = appData.categories.find(c => c.id === currentTab) || appData.categories[0];
   if (!cat) return;
+  // 日記：內容已經由「隨寫隨存」寫進同一筆，按新增＝完成這一則並清空，準備寫下一則
+  if (cat.id === 'diary') { finishDiaryEntry(text); return; }
   const isExpense = cat.id === 'expense';
   let newId;
   if (isExpense) {

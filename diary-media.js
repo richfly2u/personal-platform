@@ -290,6 +290,27 @@
     }
     if (draft && !Array.isArray(draft.videos)) draft.videos = [];
     if (inputEl && edValue(inputEl) !== liveText) edSet(liveText);
+    // 🔴 保險：資料裡有影片、文字卻沒有對應標記（舊資料或被截斷）→ 補回編輯器，
+    //    否則「加好影片後要編輯」會看不到那支影片。
+    try {
+      if (inputEl && isDiv(inputEl)) {
+        const cur = edValue(inputEl);
+        (draft.videos || []).forEach(vd => {
+          if (!vd || !vd.id) return;
+          if (cur.indexOf('〔vid:' + vd.id + '〕') >= 0) return;
+          if (inputEl.querySelector('figure[data-vid="' + vd.id + '"]')) return;
+          const fig = buildVid(vd.id);
+          if (fig) { inputEl.appendChild(document.createElement('br')); inputEl.appendChild(fig); }
+        });
+        (draft.images || []).forEach(im => {
+          if (!im || !im.id) return;
+          if (cur.indexOf('〔img:' + im.id + '〕') >= 0) return;
+          if (inputEl.querySelector('figure[data-img="' + im.id + '"]')) return;
+          const fig = buildFig(im.id);
+          if (fig) { inputEl.appendChild(document.createElement('br')); inputEl.appendChild(fig); }
+        });
+      }
+    } catch (e) {}
     autoSizeTa();
     paint();
     setTimeout(() => { suppressSave = false; editingLoad = false; }, 700);
@@ -308,7 +329,7 @@
   function clearDraft() {
     clearTimeout(saveTimer);
     liveText = "";
-    draft = { images: [], audio: null, sketch: null, rows: [], bg: "none", size: "" };
+    draft = { images: [], videos: [], audio: null, sketch: null, rows: [], bg: "none", size: "" };
     if (inputEl) { if (isDiv(inputEl)) edSet(""); else inputEl.value = ""; }
     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
     markSaved("");
@@ -382,7 +403,15 @@
     const v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.preload = 'metadata';
     if (vd.poster) v.poster = vd.poster;
-    window.__ppDiaryBlob.get(id).then(b => { if (b) v.src = URL.createObjectURL(b); });
+    window.__ppDiaryBlob.get(id).then(b => {
+      if (b) { v.src = URL.createObjectURL(b); return; }
+      // 本機檔案不在了（換手機／清過資料）→ 至少留下海報與說明，不要變空白
+      if (vd.yt) return;              // 有 YouTube 版本就交給嵌入播放
+      const ph = document.createElement('div');
+      ph.className = 'ed-vmiss';
+      ph.textContent = '影片檔已不在這台裝置（只剩記錄）';
+      fig.replaceChild(ph, v);
+    });
     const cap = document.createElement('figcaption');
     cap.className = 'ed-cap'; cap.contentEditable = 'true'; cap.dataset.vcap = id;
     cap.textContent = vd.caption || '';
