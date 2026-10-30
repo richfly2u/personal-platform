@@ -187,7 +187,9 @@
 .hb-ws.on{border-color:var(--accent)}
 .hb-ws .bar{height:3px;border-radius:2px;background:var(--border);margin:4px 4px 0;overflow:hidden}
 .hb-ws .bar i{display:block;height:100%;background:var(--accent)}
-.hb-sec-hint{margin-left:auto;font-size:11px;font-weight:400;color:#a8a29e;letter-spacing:0}
+.hb-sec-add{margin-left:8px;border:0;background:#fff;color:#c8811f;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;box-shadow:inset 0 0 0 1px #f0d9b4;cursor:pointer}
+  .hb-sec-add:active{background:#fbeedc}
+  .hb-sec-hint{margin-left:auto;font-size:11px;font-weight:400;color:#a8a29e;letter-spacing:0}
   .hb-sec{font-size:.72rem;letter-spacing:.1em;color:var(--text2);margin:14px 2px 6px}
 .hb-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .hb-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--border)}
@@ -279,8 +281,8 @@
       <div class="hb-sec">資料</div>
       <div class="hb-card">
         <div class="hb-lrow"><div><div class="t">匯出備份</div><div class="s">可匯入 kindhome.net/habits 或另一台裝置</div></div><button class="hb-btn" id="hbExport">匯出</button></div>
-        <div class="hb-lrow"><div><div class="t">匯入備份</div><div class="s">讀取 JSON 會覆蓋現有習慣</div></div><button class="hb-btn" id="hbImport">匯入</button></div>
-        <div class="hb-lrow"><div><div class="t">舊版每日儀表板</div><div class="s">原本的養成好習慣頁（雲端資料仍保留）</div></div><button class="hb-btn" id="hbOld">開啟</button></div>
+        <div class="hb-lrow"><div><div class="t">匯入備份</div><div class="s">讀取 JSON 並與現有習慣合併（不會刪掉現有的）</div></div><button class="hb-btn" id="hbImport">匯入</button></div>
+        <div class="hb-lrow"><div><div class="t">整合舊版習慣</div><div class="s">從 kindhome.net/habits 匯出的 JSON 併進來（不覆蓋現有資料）</div></div><button class="hb-btn" id="hbMerge">整合</button></div>
       </div>
     </div>
     <button class="hb-fab" id="hbAdd">+</button>
@@ -380,7 +382,7 @@
     const pending = due.filter(h => !isDone(h, tk));
     const dl = due.filter(h => isDone(h, tk));
     return `<div class="hb-week">${strip}</div>
-      <div class="hb-sec">待打卡${pending.length ? '<span class="hb-sec-hint">點右邊圓圈就算完成</span>' : ''}</div>
+      <div class="hb-sec">待打卡${pending.length ? '<span class="hb-sec-hint">點右邊圓圈就算完成</span>' : ''}<button type="button" class="hb-sec-add" id="hbAdd2" data-addhabit="1">＋ 新增</button></div>
       <div class="hb-card">${pending.length ? pending.map(h => row(h, tk)).join("") : `<div class="hb-empty">${due.length ? "今天全部完成。" : "按右下角 + 新增第一個習慣"}</div>`}</div>
       ${dl.length ? `<div class="hb-sec">已完成</div><div class="hb-card">${dl.map(h => row(h, tk)).join("")}</div>` : ""}`;
   }
@@ -513,6 +515,39 @@
   }
 
   /* ---------- 匯出／匯入 ---------- */
+  // 與舊版 kindhome.net/habits 整合：用隱藏 iframe + postMessage 取回它的 habit.v2（同一個 App 的另一份資料）
+  function mergeFromOld() {
+    // 舊版 kindhome.net/habits 的資料存在它自己的網域，只能用它自己的「匯出」再匯入。
+    // 這裡按一下：先開舊站新分頁（方便按匯出），同時直接開檔選擇器。
+    try { window.open("https://kindhome.net/habits/", "_blank"); } catch (e) {}
+    toast("請在舊版按「匯出」，再回來選檔即可合併");
+    setTimeout(() => { try { $("#hbFile").click(); } catch (e) {} }, 700);
+  }
+
+  // 合併：同名習慣視為同一個；打卡紀錄取每天最大值，不覆蓋現有資料
+  function mergeState(old) {
+    let added = 0, merged = 0;
+    (old.habits || []).forEach(oh => {
+      let mine = S.habits.find(x => x.id === oh.id) || S.habits.find(x => x.name === oh.name);
+      if (!mine) {
+        mine = Object.assign({}, oh);
+        if (!mine.id) mine.id = "m" + Math.random().toString(36).slice(2, 9);
+        mine.order = S.habits.length;
+        S.habits.push(mine);
+        added++;
+      }
+      const ol = (old.logs || {})[oh.id] || {};
+      S.logs[mine.id] = S.logs[mine.id] || {};
+      Object.keys(ol).forEach(k => {
+        const a = Number(S.logs[mine.id][k] || 0), b = Number(ol[k] || 0);
+        if (b > a) { S.logs[mine.id][k] = b; merged++; }
+      });
+    });
+    S.habits.forEach((x, i) => x.order = i);
+    save(); render();
+    toast(added || merged ? ("已整合 " + added + " 個習慣、" + merged + " 筆打卡") : "兩邊資料已是最新，沒有需要整合的");
+  }
+
   function exportJSON() {
     const blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -525,9 +560,13 @@
     const fr = new FileReader();
     fr.onload = () => {
       try {
-        const o = JSON.parse(fr.result);
+        const raw = JSON.parse(fr.result);
+        // 支援兩種檔：習慣備份本體，或個人平台整包備份（habitData 字串）
+        let o = raw;
+        if (raw && typeof raw.habitData === "string") o = JSON.parse(raw.habitData);
         if (!o || !Array.isArray(o.habits)) throw new Error("格式不符");
-        S = normalize(o); save(); render(); toast("匯入完成：" + S.habits.length + " 個習慣");
+        if (!S) S = load();
+        mergeState(o);                        // 合併：不覆蓋現有習慣與打卡
       } catch (e) { toast("匯入失敗：" + e.message); }
     };
     fr.readAsText(file);
@@ -543,8 +582,9 @@
 
   /* ---------- 事件（容器內委派） ---------- */
   function hbHostClick(e) {
-      const t = e.target.closest("[data-toggle],[data-edit],[data-day],[data-v],[data-tpl],[data-kind],[data-f],[data-wd],[data-em],[data-col],[data-add],[data-start]");
+      const t = e.target.closest("[data-toggle],[data-edit],[data-day],[data-v],[data-tpl],[data-kind],[data-f],[data-wd],[data-em],[data-col],[data-add],[data-start],[data-addhabit]");
       if (!t) return;
+      if (t.dataset.addhabit) { openSheet(null); return; }
       if (t.dataset.toggle) { const h = S.habits.find(x => x.id === t.dataset.toggle); if (h) tapToggle(h, t.dataset.k); return; }
       if (t.dataset.edit) { openSheet(t.dataset.edit); return; }
       if (t.dataset.day) { calSel = t.dataset.day; if (view !== "cal") { view = "cal"; } calCursor = startOfMonth(keyToDate(calSel)); render(); return; }
@@ -585,6 +625,8 @@
     if (!anchor || anchor.__bound) return;   // 同一個畫面只綁一次，否則一次點擊會觸發多次、打卡互相抵銷
     anchor.__bound = 1;
     $("#hbAdd").addEventListener("click", () => openSheet(null));
+    const mg = $("#hbMerge");
+    if (mg) mg.addEventListener("click", mergeFromOld);
     $("#hbSheetClose").addEventListener("click", closeSheet);
     $("#hbVClose").addEventListener("click", closeValue);
     $("#hbMask").addEventListener("click", () => { if ($("#hbVSheet").classList.contains("on")) closeValue(); else closeSheet(); });
@@ -608,7 +650,8 @@
     $("#hbExport").addEventListener("click", exportJSON);
     $("#hbImport").addEventListener("click", () => $("#hbFile").click());
     $("#hbFile").addEventListener("change", e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ""; });
-    $("#hbOld").addEventListener("click", () => { if (oldDashCb) oldDashCb(); });
+    const oldBtn = $("#hbOld");
+    if (oldBtn) oldBtn.addEventListener("click", () => { if (oldDashCb) oldDashCb(); });
   }
   function move(dir) {
     if (!editing) return;
@@ -630,6 +673,16 @@
       if (!same) { el.innerHTML = shell(); bind(); }
       render();
       startTicker();
+      // 自癒：首次繪製若 body 是空的（資料尚未就緒/外層競態），重讀本機資料並重畫
+      (function heal(n) {
+        try {
+          const b = host && host.querySelector("#hbBody");
+          if (b && b.children.length) return;
+          if (S && !(S.habits || []).length) { const again = load(); if (again && (again.habits || []).length) S = again; }
+          render();
+        } catch (e) {}
+        if (n > 0) setTimeout(() => heal(n - 1), 300);
+      })(3);
     },
     summary() {
       if (!S) S = load();

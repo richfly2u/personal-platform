@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '78';
+const APP_VERSION = '79';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -163,7 +163,7 @@ function restoreNav() {
       // habits 是模組頁（不在 categories 內）
       if (currentTab !== 'habits' && !appData.categories.some(c => c.id === currentTab)) currentTab = (appData.categories[0] || {}).id || 'todo';
       homeOpen = !!s.homeOpen;
-      dashboardOpen = !!s.dashboardOpen;
+      dashboardOpen = false;   // 舊 iframe 儀表板退場：習慣一律走原生模組（否則會空白一片）
       if (currentTab === 'diary') diaryFresh = true;   // 重開 App 停在日記頁也是空白開始
     }
   } catch(e) {}
