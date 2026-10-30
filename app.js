@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '75';
+const APP_VERSION = '78';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -79,6 +79,7 @@ const DIARY_MOOD_CLS = { '喜': 'xi', '怒': 'nu', '哀': 'ai', '樂': 'le', '�
 let diaryQuery = '';                    // 日記搜尋字
 let diaryMoodFilter = '';               // 日記心情篩選（空 = 全部）
 let diaryKindFilter = '';               // 日記屬性篩選（空 = 全部）
+let diarySearchOpen = false;            // 搜尋框是否展開（平時只留一顆放大鏡）
 const diaryClosedMonths = new Set();    // 已收合的月份
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
@@ -134,7 +135,7 @@ async function init() {
     if (t && (t === 'habits' || appData.categories.some(c => c.id === t))) {
       currentTab = t;
       homeOpen = false;
-      dashboardOpen = (t === 'habits');
+      dashboardOpen = false;   // 習慣一律走原生模組（舊 iframe 儀表板容易空白，前賢 2026-10-30）
       if (t === 'diary') diaryFresh = true;
     }
   } catch (e) {}
@@ -1318,15 +1319,21 @@ function diaryDayCardHtml(list) {
 
 function diarySearchHtml() {
   const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
-  return `<label class="dsearch-mini">${ico('search', 14)}<input id="diarySearch" type="search" placeholder="搜尋" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記"></label>`;
+  return `<div class="dsearch-wrap${(diarySearchOpen || diaryQuery) ? ' open' : ''}" id="dsearchWrap">
+    <button type="button" class="dsearch-toggle" id="dsearchToggle" aria-label="搜尋日記">${ico('search', 18)}</button>
+    <input id="diarySearch" type="search" placeholder="搜尋日記" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記">
+  </div>`;
 }
 
 function diaryToolbarHtml() {
-  const chips = [['', '全部']].concat(DIARY_MOODS.map(m => [m, DIARY_MOOD_EMOJI[m] + ' ' + m]));
-  const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
-  return `<div class="dsearch">
-    <div class="dfilters">${chips.map(c => `<button type="button" class="dfilter${diaryMoodFilter === c[0] ? ' on' : ''}" data-mf="${c[0]}">${c[1]}</button>`).join('')}</div>
-    <div class="dfilters dkfilters"><span class="dflt-lbl">屬性</span>${[['', '全部']].concat(DIARY_KINDS.map(k => [k, k])).map(c => `<button type="button" class="dkfilter${diaryKindFilter === c[0] ? ' on' : ''}" data-kf="${c[0]}">${c[1]}</button>`).join('')}</div>
+  const mChips = [['', '全部']].concat(DIARY_MOODS.map(m => [m, DIARY_MOOD_EMOJI[m]]));
+  const kChips = DIARY_KINDS.map(k => [k, k]);
+  return `<div class="dbar">
+    <div class="dbar-row">
+      ${mChips.map(c => `<button type="button" class="dfilter${diaryMoodFilter === c[0] ? ' on' : ''}" data-mf="${c[0]}" title="${c[0] || '全部'}">${c[1]}</button>`).join('')}
+      <i class="dbar-sep"></i>
+      ${kChips.map(c => `<button type="button" class="dkfilter${diaryKindFilter === c[0] ? ' on' : ''}" data-kf="${c[0]}">${c[1]}</button>`).join('')}
+    </div>
   </div>`;
 }
 
@@ -1396,6 +1403,27 @@ function diaryDeleteById(id) {
   });
 }
 
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const tg = t.closest('#dsearchToggle');
+  if (tg) {
+    const wrap = document.getElementById('dsearchWrap');
+    const inp = document.getElementById('diarySearch');
+    if (wrap) wrap.classList.add('open');
+    diarySearchOpen = true;
+    if (inp) { inp.focus(); if (inp.value) inp.select(); }
+  }
+});
+document.addEventListener('focusout', function (e) {
+  if (!e.target || e.target.id !== 'diarySearch') return;
+  const v = String(e.target.value || '').trim();
+  const wrap = document.getElementById('dsearchWrap');
+  if (!v) {
+    diarySearchOpen = false;
+    if (wrap) wrap.classList.remove('open');
+  }
+});
 document.addEventListener('input', function (e) {
   if (e.target && e.target.id === 'diarySearch') { diaryQuery = e.target.value; diaryRefreshCards(); }
 });

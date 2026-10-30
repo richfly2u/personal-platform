@@ -187,7 +187,8 @@
 .hb-ws.on{border-color:var(--accent)}
 .hb-ws .bar{height:3px;border-radius:2px;background:var(--border);margin:4px 4px 0;overflow:hidden}
 .hb-ws .bar i{display:block;height:100%;background:var(--accent)}
-.hb-sec{font-size:.72rem;letter-spacing:.1em;color:var(--text2);margin:14px 2px 6px}
+.hb-sec-hint{margin-left:auto;font-size:11px;font-weight:400;color:#a8a29e;letter-spacing:0}
+  .hb-sec{font-size:.72rem;letter-spacing:.1em;color:var(--text2);margin:14px 2px 6px}
 .hb-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .hb-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--border)}
 .hb-row:last-child{border-bottom:0}
@@ -379,7 +380,7 @@
     const pending = due.filter(h => !isDone(h, tk));
     const dl = due.filter(h => isDone(h, tk));
     return `<div class="hb-week">${strip}</div>
-      <div class="hb-sec">待打卡</div>
+      <div class="hb-sec">待打卡${pending.length ? '<span class="hb-sec-hint">點右邊圓圈就算完成</span>' : ''}</div>
       <div class="hb-card">${pending.length ? pending.map(h => row(h, tk)).join("") : `<div class="hb-empty">${due.length ? "今天全部完成。" : "按右下角 + 新增第一個習慣"}</div>`}</div>
       ${dl.length ? `<div class="hb-sec">已完成</div><div class="hb-card">${dl.map(h => row(h, tk)).join("")}</div>` : ""}`;
   }
@@ -541,8 +542,7 @@
   }
 
   /* ---------- 事件（容器內委派） ---------- */
-  function bind() {
-    host.addEventListener("click", e => {
+  function hbHostClick(e) {
       const t = e.target.closest("[data-toggle],[data-edit],[data-day],[data-v],[data-tpl],[data-kind],[data-f],[data-wd],[data-em],[data-col],[data-add],[data-start]");
       if (!t) return;
       if (t.dataset.toggle) { const h = S.habits.find(x => x.id === t.dataset.toggle); if (h) tapToggle(h, t.dataset.k); return; }
@@ -576,8 +576,14 @@
         } else { S.running = { hid: vHabit.id, k: vKey, since: Date.now() }; save(); }
         drawValue(); return;
       }
-    });
+  }
 
+  function bind() {
+    if (!host) return;
+    if (!host.__hbClickBound) { host.__hbClickBound = 1; host.addEventListener("click", hbHostClick); }
+    const anchor = $("#hbAdd");
+    if (!anchor || anchor.__bound) return;   // 同一個畫面只綁一次，否則一次點擊會觸發多次、打卡互相抵銷
+    anchor.__bound = 1;
     $("#hbAdd").addEventListener("click", () => openSheet(null));
     $("#hbSheetClose").addEventListener("click", closeSheet);
     $("#hbVClose").addEventListener("click", closeValue);
@@ -616,12 +622,12 @@
   window.Habits = {
     render(el) {
       injectCSS();
-      host = el;
       if (!S) S = load();
       if (!calSel) calSel = today();
       if (!calCursor) calCursor = startOfMonth(new Date());
-      el.innerHTML = shell();
-      bind();
+      const same = (host === el) && !!(el && el.querySelector("#hbAdd"));
+      host = el;
+      if (!same) { el.innerHTML = shell(); bind(); }
       render();
       startTicker();
     },
