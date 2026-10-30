@@ -2174,3 +2174,10 @@ li.dcard.expanded .dcard-text { display: none; }
 .yt-lite-play::before { content: ''; position: absolute; left: 24px; top: 19px; border-style: solid;
   border-width: 12px 0 12px 19px; border-color: transparent transparent transparent #8fae7a; }
 .yt-lite-cover:active .yt-lite-play { transform: scale(.95); }
+/* ==== 照片／影片長按選單（取代常駐工具列）2026-10-30 ==== */
+.dm-fig img, .dm-vfig video { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.dm-menu { position: fixed; z-index: 9998; background: #fffdf7; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  padding: 6px; display: flex; flex-direction: column; min-width: 132px; }
+.dm-menu button { border: 0; background: transparent; text-align: left; padding: 10px 14px; font-size: 14px; color: #4b3f2f; border-radius: 10px; }
+.dm-menu button:active { background: #f1e7d6; }
+.dm-menu .dm-menu-del { color: #b4564a; }

@@ -852,13 +852,7 @@ function diaryVidHtml(v) {
     : `<video data-vmid="${v.id}" controls playsinline preload="metadata" poster="${v.poster || ''}"></video>`;
   return `<figure class="dm-fig dm-vfig" data-vid="${v.id}">
     ${ytBox}
-    <figcaption class="dm-cap${cap ? '' : ' empty'}" data-vcap="${v.id}">${cap ? escHtml(cap) : '加一句說明…'}</figcaption>
-    <div class="dm-tools">
-      <button type="button" data-mv="up" data-id="${v.id}" data-kind="vid" aria-label="上移">↑</button>
-      <button type="button" data-mv="down" data-id="${v.id}" data-kind="vid" aria-label="下移">↓</button>
-      <button type="button" data-vcapedit="${v.id}">說明</button>
-      <button type="button" data-viddel="${v.id}">刪除</button>
-    </div>
+    ${cap ? `<figcaption class="dm-cap" data-vcap="${v.id}">${escHtml(cap)}</figcaption>` : ''}
   </figure>`;
 }
 
@@ -866,14 +860,7 @@ function diaryFigHtml(m) {
   const cap = String(m.caption || '').trim();
   return `<figure class="dm-fig" data-img="${m.id}">
     <img data-mid="${m.id}" src="${m.thumb || ''}" alt="">
-    <figcaption class="dm-cap${cap ? '' : ' empty'}" data-cap="${m.id}">${cap ? escHtml(cap) : '加一句說明…'}</figcaption>
-    <div class="dm-tools">
-      <button type="button" data-mv="up" data-id="${m.id}" aria-label="上移">↑</button>
-      <button type="button" data-mv="down" data-id="${m.id}" aria-label="下移">↓</button>
-      <button type="button" data-capedit="${m.id}">說明</button>
-      <button type="button" data-replace="${m.id}">換圖</button>
-      <button type="button" data-imgdel="${m.id}">刪除</button>
-    </div>
+    ${cap ? `<figcaption class="dm-cap" data-cap="${m.id}">${escHtml(cap)}</figcaption>` : ''}
   </figure>`;
 }
 
@@ -990,21 +977,30 @@ function editDiaryCaption(it, id, kind) {
 }
 
 function deleteDiaryImage(it, id) {
-  if (!window.confirm('刪除這張圖片？')) return;
-  it.text = String(it.text || '').split('〔img:' + id + '〕').join('');
+  // 長按選單本身就是確認，不再跳系統對話框；誤刪可用下方「復原」
+  const prevText = String(it.text || '');
+  const prevImgs = (it.images || []).slice();
+  it.text = prevText.split('〔img:' + id + '〕').join('');
   it.images = (it.images || []).filter(x => x.id !== id);
   saveDiaryItem(it);
   renderDiaryRead(it);
-  tipToast('已刪除');
+  showUndo('已刪除照片', () => {
+    it.text = prevText; it.images = prevImgs;
+    saveDiaryItem(it); renderDiaryRead(it); renderMain();
+  });
 }
 
 function deleteDiaryVideo(it, id) {
-  if (!window.confirm('刪除這段影片？')) return;
-  it.text = String(it.text || '').split('〔vid:' + id + '〕').join('');
+  const prevText = String(it.text || '');
+  const prevVids = (it.videos || []).slice();
+  it.text = prevText.split('〔vid:' + id + '〕').join('');
   it.videos = (it.videos || []).filter(x => x.id !== id);
   saveDiaryItem(it);
   renderDiaryRead(it);
-  tipToast('已刪除影片');
+  showUndo('已刪除影片', () => {
+    it.text = prevText; it.videos = prevVids;
+    saveDiaryItem(it); renderDiaryRead(it); renderMain();
+  });
 }
 
 function replaceDiaryImage(it, id) {
@@ -1026,8 +1022,8 @@ function replaceDiaryImage(it, id) {
         img.onerror = rej;
         img.src = URL.createObjectURL(file);
       });
-      const big = await readOne(f, 1600, 0.82);
-      const sm = await readOne(f, 280, 0.6);
+      const big = await readOne(f, 2048, 0.9);
+      const sm = await readOne(f, 480, 0.72);
       if (window.__ppDiaryBlob) {
         const blob = await (await fetch(big.dataUrl)).blob();
         await window.__ppDiaryBlob.put(id, blob);
@@ -1568,6 +1564,84 @@ window.__ppAudioFix = function (audioId, sec) {
     if (Math.abs((it.audio.dur || 0) - real) >= 1) { it.audio.dur = real; saveData(); }
   } catch (e) {}
 };
+
+// ==== 照片／影片：長按才出現操作選單（不再常駐工具列）2026-10-30 ====
+let dmMenuEl = null;
+function closeDmMenu() { if (dmMenuEl) { dmMenuEl.remove(); dmMenuEl = null; } }
+function dmHostItem(el) {
+  const host = el.closest('#dcReadBody') || el.closest('.dcard-full');
+  const id = host ? (host.dataset.item || host.dataset.full) : null;
+  if (!id) return null;
+  return getItems('diary').find(x => x.id === id) || null;
+}
+function openDmMenu(el, x, y) {
+  closeDmMenu();
+  const figImg = el.closest('[data-img]');
+  const figVid = el.closest('[data-vid]');
+  const it = dmHostItem(el);
+  if (!it || (!figImg && !figVid)) return;
+  const box = document.createElement('div');
+  box.className = 'dm-menu';
+  if (figImg) {
+    const id = figImg.dataset.img;
+    box.innerHTML = '<button type="button" data-m="replace">更換照片</button><button type="button" data-m="del" class="dm-menu-del">刪除照片</button>';
+    box.addEventListener('click', ev => {
+      const b = ev.target.closest('button'); if (!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      closeDmMenu();
+      if (b.dataset.m === 'replace') replaceDiaryImage(it, id);
+      if (b.dataset.m === 'del') deleteDiaryImage(it, id);
+    });
+  } else {
+    const id = figVid.dataset.vid;
+    box.innerHTML = '<button type="button" data-m="del" class="dm-menu-del">刪除影片</button>';
+    box.addEventListener('click', ev => {
+      const b = ev.target.closest('button'); if (!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      closeDmMenu();
+      if (b.dataset.m === 'del') deleteDiaryVideo(it, id);
+    });
+  }
+  document.body.appendChild(box);
+  const r = box.getBoundingClientRect();
+  box.style.left = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8) + 'px';
+  box.style.top = Math.min(Math.max(8, y - r.height - 12), window.innerHeight - r.height - 8) + 'px';
+  dmMenuEl = box;
+}
+(function bindDmLongPress() {
+  let timer = null, sx = 0, sy = 0;
+  const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  const targetOf = node => (node && node.closest) ? node.closest('.dm-fig[data-img], .dm-vfig[data-vid]') : null;
+  const watch = (node, x, y) => {
+    const el = targetOf(node);
+    if (!el) return;
+    cancel(); sx = x; sy = y;
+    timer = setTimeout(() => { timer = null; try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} openDmMenu(el, sx, sy); }, 600);
+  };
+  document.addEventListener('touchstart', ev => {
+    const t = ev.touches && ev.touches[0]; if (!t) return;
+    const el = targetOf(ev.target);
+    if (el) { try { ev.target.style && (ev.target.style.webkitTouchCallout = 'none'); } catch (e) {} }
+    watch(ev.target, t.clientX, t.clientY);
+  }, { passive: true });
+  document.addEventListener('touchmove', ev => {
+    const t = ev.touches && ev.touches[0];
+    if (timer && t && (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12)) cancel();
+  }, { passive: true });
+  ['touchend', 'touchcancel'].forEach(t => document.addEventListener(t, cancel, { passive: true }));
+  document.addEventListener('mousedown', ev => { if (ev.button === 0) watch(ev.target, ev.clientX, ev.clientY); });
+  document.addEventListener('mousemove', ev => { if (timer && (Math.abs(ev.clientX - sx) > 12 || Math.abs(ev.clientY - sy) > 12)) cancel(); });
+  ['mouseup', 'scroll'].forEach(t => document.addEventListener(t, cancel, true));
+  document.addEventListener('contextmenu', ev => {
+    const el = targetOf(ev.target);
+    if (!el) return;
+    ev.preventDefault();
+    openDmMenu(el, ev.clientX, ev.clientY);
+  });
+  document.addEventListener('pointerdown', ev => {
+    if (dmMenuEl && !ev.target.closest('.dm-menu') && !targetOf(ev.target)) closeDmMenu();
+  }, true);
+})();
 
 window.__ppDiaryRerender = function () { try { renderMain(); } catch (e) {} };
 window.__ppGetDiary = function () { try { return getItems('diary'); } catch (e) { return []; } };

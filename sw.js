@@ -1,5 +1,5 @@
 /* === Service Worker === */
-const CACHE = 'personal-platform-v129';
+const CACHE = 'personal-platform-v130';
 const URLS = ['index.html', 'style.css', 'app.js', 'habits.js', 'diary-media.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

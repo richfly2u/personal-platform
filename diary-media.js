@@ -120,7 +120,11 @@
 .dt-draft{font-size:.8rem;color:var(--text2)}
 .dt-imgs{display:flex;gap:9px;overflow-x:auto;padding:8px 0}
 .dt-thumb{position:relative;flex:0 0 auto}
-.dt-thumb.intext::after{content:'文中';position:absolute;left:4px;bottom:4px;background:rgba(239,175,88,.92);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px}
+.ed-fig img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.ed-imgmenu{position:fixed;z-index:9998;background:#fffdf7;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.22);padding:6px;display:flex;flex-direction:column;min-width:132px}
+.ed-imgmenu button{border:0;background:transparent;text-align:left;padding:10px 14px;font-size:14px;color:#4b3f2f;border-radius:10px}
+.ed-imgmenu button:active{background:#f1e7d6}
+.ed-imgmenu button[data-act="del"]{color:#b4564a}
 .dt-thumb img{width:108px;height:108px;object-fit:cover;border-radius:12px;border:1px solid var(--border)}
 .dt-thumb b{position:absolute;top:-6px;right:-6px;background:#3d2c1e;color:#fff;width:18px;height:18px;border-radius:50%;
   display:grid;place-items:center;font-size:11px;cursor:pointer}
@@ -187,6 +191,7 @@
     injectCSS();
     if (!draft) draft = empty();
     inputEl = formEl.querySelector("#addText");
+    bindImgLongPress(inputEl);
     if (formEl.querySelector(".dt-bar")) { paint(); return; }
     toolsEl = document.createElement("div");
     toolsEl.innerHTML = `
@@ -440,6 +445,127 @@
     cap.textContent = im.caption || '';
     fig.appendChild(img); fig.appendChild(cap);
     return fig;
+  }
+
+  // 文中圖片：長按（手機 0.6 秒）或按右鍵 → 就地出現「更換照片／刪除照片」
+  let imgMenuEl = null;
+  function closeImgMenu() {
+    if (imgMenuEl) { imgMenuEl.remove(); imgMenuEl = null; }
+  }
+  function openImgMenu(fig, x, y) {
+    closeImgMenu();
+    const id = fig.dataset.img;
+    const im = (draft.images || []).find(m => m.id === id);
+    if (!im) return;
+    const box = document.createElement('div');
+    box.className = 'ed-imgmenu';
+    box.innerHTML = '<button type="button" data-act="replace">更換照片</button>' +
+                    '<button type="button" data-act="del">刪除照片</button>';
+    document.body.appendChild(box);
+    const r = box.getBoundingClientRect();
+    const px = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
+    const py = Math.min(Math.max(8, y - r.height - 12), window.innerHeight - r.height - 8);
+    box.style.left = px + 'px'; box.style.top = py + 'px';
+    imgMenuEl = box;
+
+    box.addEventListener('click', ev => {
+      const b = ev.target.closest('button');
+      if (!b) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const act = b.dataset.act;
+      closeImgMenu();
+      if (act === 'del') removeDraftImage(id);
+      if (act === 'replace') replaceDraftImage(im);
+    });
+  }
+
+  function removeDraftImage(id) {
+    try {
+      const fig = inputEl && inputEl.querySelector('figure[data-img="' + id + '"]');
+      if (fig) fig.remove();
+      draft.images = (draft.images || []).filter(m => m.id !== id);
+      try { if (window.__ppDiaryBlob && window.__ppDiaryBlob.put) { /* 保留檔案，日記若別處引用不影響 */ } } catch (e) {}
+      if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+      paint();
+      toast('已刪除這張照片');
+    } catch (e) {}
+  }
+
+  function replaceDraftImage(im) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none';
+    document.body.appendChild(inp);
+    inp.addEventListener('change', async () => {
+      const f = inp.files && inp.files[0];
+      inp.remove();
+      if (!f) return;
+      try {
+        const big = await imgFromFile(f, 2048, 0.9);
+        const sm = await imgFromFile(f, 480, 0.72);
+        await putBlob(im.id, big.blob);
+        im.thumb = await toDataURL(sm.blob); im.w = big.w; im.h = big.h;
+        const fig = inputEl && inputEl.querySelector('figure[data-img="' + im.id + '"]');
+        if (fig) { const nf = buildFig(im.id); if (nf) fig.replaceWith(nf); }
+        if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+        paint();
+        toast('照片已更換');
+      } catch (e) { toast('更換失敗，請再試一次'); }
+    });
+    inp.click();
+  }
+
+  function bindImgLongPress(root) {
+    if (!root || root.dataset.lpBound) return;
+    root.dataset.lpBound = '1';
+    let timer = null, sx = 0, sy = 0;
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    const fire = (fig, x, y) => {
+      window.__lpFire = (window.__lpFire || 0) + 1;
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+      openImgMenu(fig, x, y);
+    };
+    const startWatch = (target, x, y) => {
+      const fig = target && target.closest ? target.closest('figure[data-img]') : null;
+      if (!fig) return;
+      cancel();
+      sx = x; sy = y;
+      timer = setTimeout(() => { timer = null; fire(fig, sx, sy); }, 600);
+    };
+    const moveCheck = (x, y) => {
+      if (!timer) return;
+      if (Math.abs(x - sx) > 12 || Math.abs(y - sy) > 12) cancel();
+    };
+
+    // 手機：觸控長按
+    root.addEventListener('touchstart', ev => {
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      startWatch(ev.target, t.clientX, t.clientY);
+    }, { passive: true });
+    root.addEventListener('touchmove', ev => {
+      const t = ev.touches && ev.touches[0];
+      if (t) moveCheck(t.clientX, t.clientY);
+    }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(t => root.addEventListener(t, cancel, { passive: true }));
+
+    // 桌面：按住滑鼠左鍵
+    root.addEventListener('mousedown', ev => { if (ev.button === 0) startWatch(ev.target, ev.clientX, ev.clientY); });
+    root.addEventListener('mousemove', ev => moveCheck(ev.clientX, ev.clientY));
+    ['mouseup', 'mouseleave'].forEach(t => root.addEventListener(t, cancel));
+
+    // 右鍵（桌面）直接開選單
+    root.addEventListener('contextmenu', ev => {
+      const fig = ev.target.closest ? ev.target.closest('figure[data-img]') : null;
+      if (!fig) return;
+      ev.preventDefault();
+      fire(fig, ev.clientX, ev.clientY);
+    });
+
+    // 點其他地方／捲動 → 收起
+    document.addEventListener('pointerdown', ev => {
+      if (imgMenuEl && !ev.target.closest('.ed-imgmenu') && !ev.target.closest('figure[data-img]')) closeImgMenu();
+    }, true);
+    window.addEventListener('scroll', closeImgMenu, true);
   }
 
   function buildVid(id) {
@@ -843,7 +969,7 @@
     if (!toolsEl) return;
     const d = toolsEl.querySelector("#dtDraft");
     let h = "";
-    if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb${hasMarker(m.id) ? ' intext' : ''}"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
+    // 圖片縮圖列已移除（2026-10-30 前賢要求）：改在文中圖片上長按出現「更換照片／刪除照片」
     if ((draft.videos || []).length) h += `<div class="dt-imgs dt-vids">${draft.videos.map(v => `<span class="dt-thumb dt-vthumb${hasVidMarker(v.id) ? ' intext' : ''}">${v.poster ? `<img src="${v.poster}">` : '<i class="dt-vph">▶</i>'}<u class="dt-vdur">${v.dur ? Math.floor(v.dur / 60) + ':' + String(v.dur % 60).padStart(2, '0') : ''}</u><b data-delvid="${v.id}">×</b></span>`).join("")}</div>`;
     if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
     if (draft.sketch) h += `<div class="dt-sk">✏️ 手寫 1 張 <button type="button" data-delsketch="1">刪除</button></div>`;
