@@ -2001,6 +2001,9 @@ li.diary-li.dcard {
 .dcard-thumb i { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.55); color: #fff; font-style: normal; font-size: .62rem; padding: 1px 6px; border-radius: 999px; }
 .dcard-acts { display: none; grid-column: 1 / -1; justify-content: flex-end; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #F1E4D2; }
 li.diary-li.dcard.acting .dcard-acts { display: flex; }
+/* 就地展開的那一則才顯示下方工具列（刪除／修改…）2026-10-30 */
+li.diary-li.dcard.expanded .dcard-acts { display: flex; }
+li.diary-li.dcard.expanded { background: #FFFDF7; }
 li.diary-li.dcard.acting { background: #FFFDF7; }
 .dact { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #FFF6E8; color: #8A8378; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .dact:active { background: #FBE7C6; }
@@ -2023,6 +2026,8 @@ li.diary-li.dcard.acting { background: #FFFDF7; }
 .drow .dcard-text { margin-top: 2px; -webkit-line-clamp: 2; }
 .drow .dcard-acts { display: none; justify-content: flex-end; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 0; }
 li.dgroup.acting .drow .dcard-acts { display: flex; }
+.drow.expanded .dcard-acts { display: flex; }
+.drow.expanded { background: #FFFDF7; }
 
 /* 日記屬性（敘事／觀察／心得／反思／抒懷）2026-10-30 */
 .diary-cream .dc-kinds { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; padding: 0 2px 12px; overflow: hidden; }
