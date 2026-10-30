@@ -1764,6 +1764,22 @@ function renderPieChart(catSum) {
   </div>`;
 }
 
+// === 習慣：直接用舊版（kindhome.net/habits），資料就在舊站本機，免搬移 ===
+const LEGACY_HABITS_URL = 'https://kindhome.net/habits/';
+function renderLegacyHabits() {
+  const main = document.getElementById('main');
+  if (!main) return;
+  main.style.display = '';
+  main.innerHTML = `
+    <div class="lh-wrap">
+      <div class="lh-bar">
+        <span>習慣打卡（舊版）</span>
+        <a href="${LEGACY_HABITS_URL}" target="_blank" rel="noopener">用新分頁開啟</a>
+      </div>
+      <iframe id="hbLegacy" src="${LEGACY_HABITS_URL}" title="習慣打卡（舊版）"></iframe>
+    </div>`;
+}
+
 // === 渲染 ===
 function renderAll() {
   renderNav();
@@ -1771,10 +1787,8 @@ function renderAll() {
     renderHome();
   } else if (dashboardOpen) {
     // 舊版 iframe 儀表板：自行處理顯示
-  } else if (currentTab === 'habits' && window.Habits) {
-    document.getElementById('main').style.display = '';
-    window.Habits.onOldDashboard(showDashboard);   // 模組內「舊版儀表板」按鈕
-    window.Habits.render(document.getElementById('main'));
+  } else if (currentTab === 'habits') {
+    renderLegacyHabits();                            // 前賢慣用舊版：直接嵌 kindhome.net/habits
   } else if (!dashboardOpen) {
     renderMain();
   }
@@ -2032,8 +2046,8 @@ function renderNav() {
       <span class="nvi">${catIcon(c, 21)}</span><span class="nvl">${c.name.replace('事項','')}</span>
     </button>
   `).join('') + `
-    <button class="nav-btn add-cat-btn" title="新增類別" aria-label="新增類別"><span class="nvi">${ico('plus', 21)}</span><span class="nvl">更多</span></button>
-    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡" aria-label="習慣"><span class="nvi">${ico('chart', 21)}</span><span class="nvl">習慣</span></button>`;
+    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡" aria-label="習慣"><span class="nvi">${ico('chart', 21)}</span><span class="nvl">習慣</span></button>
+    <button class="nav-btn add-cat-btn" title="新增類別" aria-label="新增類別"><span class="nvi">${ico('plus', 21)}</span><span class="nvl">更多</span></button>`;
 
   const homeBtn = document.getElementById('homeBtn');
   if (homeBtn) homeBtn.addEventListener('click', goHome);

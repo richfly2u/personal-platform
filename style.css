@@ -2139,3 +2139,9 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
   border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 50% !important;
   color: #A29684 !important; cursor: pointer; }
 .dsw .dsw-btn:active { background: #F6EEE2 !important; }
+
+/* 習慣（舊版）內嵌 2026-10-30 */
+.lh-wrap { display: flex; flex-direction: column; gap: 8px; }
+.lh-bar { display: flex; align-items: center; justify-content: space-between; font-size: .8rem; color: #8A8378; padding: 0 2px; }
+.lh-bar a { color: #5F7C59; text-decoration: none; font-size: .78rem; border-bottom: 1px solid rgba(95,124,89,.35); }
+#hbLegacy { width: 100%; height: calc(100vh - 190px); min-height: 420px; border: 0; border-radius: 14px; background: #fff; }
