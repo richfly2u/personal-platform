@@ -2023,3 +2023,28 @@ li.diary-li.dcard.acting { background: #FFFDF7; }
 .drow .dcard-text { margin-top: 2px; -webkit-line-clamp: 2; }
 .drow .dcard-acts { display: none; justify-content: flex-end; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 0; }
 li.dgroup.acting .drow .dcard-acts { display: flex; }
+
+/* 日記屬性（敘事／觀察／心得／反思／抒懷）2026-10-30 */
+.diary-cream .dc-kinds { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; padding: 0 2px 12px; overflow: hidden; }
+.diary-cream .dc-kinds-lbl { font-size: .72rem; color: #A2968400; color: #A29684; flex: none; letter-spacing: .04em; }
+.diary-cream .dc-kind { flex: none; background: #fff; color: #9A9082; border: 1.5px solid #E8DAC4; border-radius: 999px;
+  font-size: .72rem; padding: 5px 10px; line-height: 1.2; font-weight: 500; cursor: pointer; }
+.diary-cream .dc-kind.on { background: #8FA98A !important; border-color: #7A9575 !important; color: #fff !important; font-weight: 700;
+  box-shadow: 0 4px 12px rgba(143,169,138,.35); }
+.dcard-kind { display: inline-block; font-size: .66rem; line-height: 1.35; padding: 1px 7px; border-radius: 999px;
+  background: #EFF3EC; color: #6E8A68; border: 1px solid #DFE7D9; vertical-align: middle; white-space: nowrap; }
+.dflt-lbl { flex: none; font-size: .7rem; color: #A29684; }
+.dkfilter { flex: none; border: 1px solid #F1E4D2; background: #fff; color: #8A8378; font-size: .71rem; padding: 5px 9px;
+  border-radius: 999px; cursor: pointer; line-height: 1.2; white-space: nowrap; }
+.dkfilter.on { background: #8FA98A; border-color: #7A9575; color: #fff; font-weight: 700; }
+.dkfilters { padding-top: 0; align-items: center; }
+
+/* 標題列＋迷你搜尋（2026-10-30） */
+.h2-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.h2-row h2 { margin: 0; }
+.dsearch-mini { display: flex; align-items: center; gap: 5px; flex: 0 1 132px; min-width: 84px;
+  border: 1px solid #F1E4D2; background: #fff; border-radius: 999px; padding: 4px 10px; }
+.dsearch-mini svg { flex: none; opacity: .5; }
+.dsearch-mini input { border: 0; outline: 0; background: transparent; font-size: .78rem; width: 100%; min-width: 0;
+  padding: 1px 0; color: inherit; }
+.dsearch-mini input::-webkit-search-cancel-button { transform: scale(.85); }

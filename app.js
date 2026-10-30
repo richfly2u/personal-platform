@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '73';
+const APP_VERSION = '75';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -71,11 +71,14 @@ let newQuad = 1;
 let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let diaryFresh = false;  // 進入日記頁一律從空白開始（前賢 2026-10-30 要求）
 let diaryMood = '';      // 日記心情（奶油日常，2026-10-30）
+let diaryKind = '';      // 日記屬性（敘事／觀察／心得／反思／抒懷，2026-10-30）
+const DIARY_KINDS = ['敘事', '觀察', '心得', '反思', '抒懷'];
 const DIARY_MOODS = ['喜', '怒', '哀', '樂', '平靜'];
 const DIARY_MOOD_EMOJI = { '喜': '😄', '怒': '😠', '哀': '😢', '樂': '🥳', '平靜': '😌' };
 const DIARY_MOOD_CLS = { '喜': 'xi', '怒': 'nu', '哀': 'ai', '樂': 'le', '平靜': 'calm' };
 let diaryQuery = '';                    // 日記搜尋字
 let diaryMoodFilter = '';               // 日記心情篩選（空 = 全部）
+let diaryKindFilter = '';               // 日記屬性篩選（空 = 全部）
 const diaryClosedMonths = new Set();    // 已收合的月份
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
@@ -707,12 +710,26 @@ function hideUndo() {
   undoState = null;
 }
 
+// 心情／屬性改了就把目前這一筆同步存好（新日記是自動存檔建檔，chip 不會自己寫回）
+function diaryPushMeta() {
+  try {
+    if (!diaryCurId) return;
+    const el = document.getElementById('addText');
+    const txt = el ? addTextValue(el) : '';
+    if (diaryMood || diaryKind || String(txt || '').trim()) {
+      if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(txt, null);
+    }
+  } catch (e) {}
+}
+
 // 日記「新增」按鈕（輸入框外右下角）：先把目前內容存好，再收筆開新的一則
 window.__ppDiaryCommit = function () {
   try {
-    const ta = document.querySelector('.diary-box textarea');
-    const txt = ta ? ta.value : '';
-    if (String(txt || '').trim() && window.__ppDiaryUpsert) window.__ppDiaryUpsert(txt, null);
+    const el = document.getElementById('addText');
+    const txt = el ? addTextValue(el) : '';
+    let draft = null;
+    try { if (window.DiaryUI && window.DiaryUI.hasDraft && window.DiaryUI.hasDraft()) draft = window.DiaryUI.takeDraft(); } catch (e) {}
+    if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(txt, draft);
   } catch (e) {}
   if (window.__ppDiaryFinish) window.__ppDiaryFinish();
 };
@@ -898,7 +915,7 @@ function openDiaryRead(itemId) {
 function renderDiaryRead(it) {
   const el = document.getElementById('dcRead');
   if (!el) return;
-  el.querySelector('#dcReadTitle').textContent = String(it.date || '').trim() + (it.mood ? ' · ' + it.mood : '');
+  el.querySelector('#dcReadTitle').textContent = String(it.date || '').trim() + (it.kind ? ' · ' + it.kind : '') + (it.mood ? ' · ' + it.mood : '');
   const body = el.querySelector('#dcReadBody');
   body.innerHTML = diaryMixedHtml(it);
   body.scrollTop = 0;
@@ -1039,6 +1056,15 @@ document.addEventListener('click', function (e) {
     const v = m.dataset.mood || '';
     diaryMood = (diaryMood === v) ? '' : v;
     document.querySelectorAll('.dc-mood').forEach(b => b.classList.toggle('on', b.dataset.mood === diaryMood));
+    diaryPushMeta();
+    return;
+  }
+  const k = t.closest('.dc-kind');
+  if (k) {
+    const v = k.dataset.kind || '';
+    diaryKind = (diaryKind === v) ? '' : v;
+    document.querySelectorAll('.dc-kind').forEach(b => b.classList.toggle('on', b.dataset.kind === diaryKind));
+    diaryPushMeta();
     return;
   }
   if (t.closest('#diaryAiBtn')) { openDiaryAI(); }
@@ -1248,6 +1274,7 @@ function diaryCardHtml(it) {
       <div class="dcard-main">
         <div class="dcard-meta">
           ${tm ? `<span class="dcard-time">${tm[1]}</span>` : ''}
+          ${it.kind ? `<span class="dcard-kind">${escHtml(it.kind)}</span>` : ''}
           ${tags.length ? `<span class="dcard-tags">${tags.join(' ')}</span>` : ''}
           <button type="button" class="dcard-more" aria-label="更多操作">⋯</button>
         </div>
@@ -1273,7 +1300,7 @@ function diaryDayCardHtml(list) {
     const prev = diaryPreview(it);
     const tags = diaryTags(it);
     return `<div class="drow" data-id="${it.id}">
-        <div class="drow-head">${tm ? `<span class="drow-time">${tm[1]}</span>` : ''}${tags.length ? `<span class="dcard-tags">${tags.join(' ')}</span>` : ''}</div>
+        <div class="drow-head">${tm ? `<span class="drow-time">${tm[1]}</span>` : ''}${it.kind ? `<span class="dcard-kind">${escHtml(it.kind)}</span>` : ''}${tags.length ? `<span class="dcard-tags">${tags.join(' ')}</span>` : ''}</div>
         <div class="dcard-text${prev ? '' : ' is-empty'}">${prev ? escHtml(prev) : '（沒有文字）'}</div>
         ${diaryActsHtml(it.id)}
       </div>`;
@@ -1289,12 +1316,17 @@ function diaryDayCardHtml(list) {
     </li>`;
 }
 
+function diarySearchHtml() {
+  const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
+  return `<label class="dsearch-mini">${ico('search', 14)}<input id="diarySearch" type="search" placeholder="搜尋" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記"></label>`;
+}
+
 function diaryToolbarHtml() {
   const chips = [['', '全部']].concat(DIARY_MOODS.map(m => [m, DIARY_MOOD_EMOJI[m] + ' ' + m]));
   const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
   return `<div class="dsearch">
-    <label class="dsearch-box">${ico('search', 16)}<input id="diarySearch" type="search" placeholder="搜尋日記…" value="${q}" autocomplete="off" enterkeyhint="search"></label>
     <div class="dfilters">${chips.map(c => `<button type="button" class="dfilter${diaryMoodFilter === c[0] ? ' on' : ''}" data-mf="${c[0]}">${c[1]}</button>`).join('')}</div>
+    <div class="dfilters dkfilters"><span class="dflt-lbl">屬性</span>${[['', '全部']].concat(DIARY_KINDS.map(k => [k, k])).map(c => `<button type="button" class="dkfilter${diaryKindFilter === c[0] ? ' on' : ''}" data-kf="${c[0]}">${c[1]}</button>`).join('')}</div>
   </div>`;
 }
 
@@ -1302,13 +1334,14 @@ function diaryCardsHtml(items) {
   const q = diaryQuery.trim().toLowerCase();
   let arr = items.slice();
   if (diaryMoodFilter) arr = arr.filter(it => it.mood === diaryMoodFilter);
+  if (diaryKindFilter) arr = arr.filter(it => (it.kind || '') === diaryKindFilter);
   if (q) {
     arr = arr.filter(it => {
       const caps = (it.images || []).map(m => m.caption || '').join(' ');
-      return (diaryPreview(it) + ' ' + (it.date || '') + ' ' + (it.mood || '') + ' ' + caps).toLowerCase().includes(q);
+      return (diaryPreview(it) + ' ' + (it.date || '') + ' ' + (it.mood || '') + ' ' + (it.kind || '') + ' ' + caps).toLowerCase().includes(q);
     });
   }
-  if (!arr.length) return `<div class="card empty">${(q || diaryMoodFilter) ? '找不到符合的日記' : '尚無內容'}</div>`;
+  if (!arr.length) return `<div class="card empty">${(q || diaryMoodFilter || diaryKindFilter) ? '找不到符合的日記' : '尚無內容'}</div>`;
   arr.sort((x, y) => diaryTs(y) - diaryTs(x));
   const todayKey = diaryDayKey(Date.now());
   const groups = [];
@@ -1324,7 +1357,7 @@ function diaryCardsHtml(items) {
     byKey[key].list.push(it);
   });
   return groups.map(g => {
-    const closed = !q && !diaryMoodFilter && diaryClosedMonths.has(g.key);
+    const closed = !q && !diaryMoodFilter && !diaryKindFilter && diaryClosedMonths.has(g.key);
     // 月份內再按「日」分組：同一天的歷史日記併在同一張卡片；今天的各自一張
     const byDay = {};
     const order = [];
@@ -1369,6 +1402,13 @@ document.addEventListener('input', function (e) {
 document.addEventListener('click', function (e) {
   const t = e.target;
   if (!t || !t.closest) return;
+  const kf = t.closest('.dkfilter');
+  if (kf) {
+    diaryKindFilter = kf.dataset.kf || '';
+    document.querySelectorAll('.dkfilter').forEach(b => b.classList.toggle('on', (b.dataset.kf || '') === diaryKindFilter));
+    diaryRefreshCards();
+    return;
+  }
   const mf = t.closest('.dfilter');
   if (mf) {
     diaryMoodFilter = mf.dataset.mf || '';
@@ -1404,6 +1444,8 @@ window.__ppDiaryFinish = function () {
     diaryCurId = null;
     try { localStorage.removeItem('diary.currentId'); } catch (e) {}
     if (window.DiaryUI) window.DiaryUI.clearDraft();
+    diaryMood = '';
+    diaryKind = '';
     renderMain();
     const ta = document.getElementById('addText');
     if (ta) { ta.focus(); ta.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
@@ -1449,6 +1491,7 @@ window.__ppDiaryUpsert = function (text, extras) {
     }
     it.text = String(text || '');
     if (diaryMood) it.mood = diaryMood; else delete it.mood;
+    if (diaryKind) it.kind = diaryKind; else delete it.kind;
     if (extras) {
       it.images = extras.images || [];
       it.videos = extras.videos || [];
@@ -2184,7 +2227,7 @@ function renderMain() {
   } else if (listItems.length === 0) {
     listHtml = isExpense ? '' : (pendingItems.length ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`);
   } else if (cat.id === 'diary') {
-    if (diaryFresh) { diaryQuery = ''; diaryMoodFilter = ''; }   // 進日記頁從乾淨狀態開始
+    if (diaryFresh) { diaryQuery = ''; diaryMoodFilter = ''; diaryKindFilter = ''; }   // 進日記頁從乾淨狀態開始
     diaryTopHtml = diaryToolbarHtml();                            // 搜尋與心情篩選固定在頂部
     listHtml = `<div id="diaryCards">${diaryCardsHtml(listItems)}</div>`;
   } else {
@@ -2215,6 +2258,7 @@ function renderMain() {
            <button type="button" class="dc-ai-btn" id="diaryAiBtn">${ico('bulb', 14)} AI 回顧</button>
          </div>
          <div class="dc-moods" id="dcMoods">${DIARY_MOODS.map(m => `<button type="button" class="dc-mood" data-mood="${m}">${m}</button>`).join('')}</div>
+         <div class="dc-kinds" id="dcKinds"><span class="dc-kinds-lbl">屬性</span>${DIARY_KINDS.map(k => `<button type="button" class="dc-kind${diaryKind === k ? ' on' : ''}" data-kind="${k}">${k}</button>`).join('')}</div>
          <div class="add-row">
            <div class="diary-box">
              <div id="addText" class="dc-edit" contenteditable="true" role="textbox" aria-multiline="true" data-ph="寫下今天…"></div>
@@ -2244,7 +2288,7 @@ function renderMain() {
 
   main.innerHTML = `
     <section class="tab-content active">
-      <h2>${catIcon(cat, 20)} ${cat.name}</h2>
+      ${cat.id === 'diary' ? `<div class="h2-row"><h2>${catIcon(cat, 20)} ${cat.name}</h2>${diarySearchHtml()}</div>` : `<h2>${catIcon(cat, 20)} ${cat.name}</h2>`}
       ${diaryTopHtml}
       ${addForm}
       ${pendingHtml}
@@ -2265,13 +2309,16 @@ function renderMain() {
       diaryFresh = false;
       diaryCurId = null;
       diaryMood = '';
+      diaryKind = '';
       try { localStorage.removeItem('diary.currentId'); } catch (e) {}
       if (window.DiaryUI && window.DiaryUI.clearDraft) window.DiaryUI.clearDraft();
     }
     if (!diaryCurId) { try { diaryCurId = localStorage.getItem('diary.currentId') || null; } catch (e) {} }
     const cur = diaryCurId ? getItems('diary').find(x => x.id === diaryCurId) : null;
     diaryMood = (cur && cur.mood) || '';
+    diaryKind = (cur && cur.kind) || '';
     main.querySelectorAll('.dc-mood').forEach(b => b.classList.toggle('on', b.dataset.mood === diaryMood));
+    main.querySelectorAll('.dc-kind').forEach(b => b.classList.toggle('on', b.dataset.kind === diaryKind));
     if (cur && window.DiaryUI.loadEntry) window.DiaryUI.loadEntry(cur);
     window.DiaryUI.afterRender(main, saveData);   // 含待歸位清單與正式列表
   }
