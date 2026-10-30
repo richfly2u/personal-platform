@@ -29,6 +29,7 @@ const ICON_PATHS = {
   edit: '<path d="M4.2 19.8h4L19 9l-4-4L4.2 15.8v4Z"/><path d="m13.6 6.4 4 4"/>',
   trash: '<path d="M4.2 7h15.6"/><path d="M9.4 7V4.2h5.2V7"/><path d="M6.2 7 7.2 20.4h9.6L17.8 7"/>',
   mic: '<rect x="9" y="3" width="6" height="10" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v3"/>',
+  eye: '<path d="M2.8 12S6.5 5.8 12 5.8 21.2 12 21.2 12 17.5 18.2 12 18.2 2.8 12 2.8 12Z"/><circle cx="12" cy="12" r="3"/>',
   share: '<path d="M12 15.5V4"/><path d="m8 7.8 4-3.8 4 3.8"/><path d="M5 13.5V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5.5"/>'
 };
 const CAT_ICON = { todo: 'check', diary: 'calendar', expense: 'money', idea: 'bulb', habits: 'chart' };
@@ -48,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '65';
+const APP_VERSION = '67';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -110,6 +111,16 @@ async function init() {
   migrateOldData();
   setupVoice();
   restoreNav();  // 重整後回到上次的頁面
+  // 支援直接連結：?tab=diary / ?tab=todo …（前賢 2026-10-30 要日記的連結）
+  try {
+    const t = new URLSearchParams(location.search).get('tab');
+    if (t && (t === 'habits' || appData.categories.some(c => c.id === t))) {
+      currentTab = t;
+      homeOpen = false;
+      dashboardOpen = (t === 'habits');
+      if (t === 'diary') diaryFresh = true;
+    }
+  } catch (e) {}
   // 先顯示本機資料，避免遠端發票服務慢或離線時整個首頁卡住。
   if (dashboardOpen) showDashboard();
   else renderAll();
@@ -723,6 +734,8 @@ function tipToast(msg) {
 document.addEventListener('click', function (e) {
   const t = e.target;
   if (!t || !t.closest) return;
+  const rd = t.closest('.read-btn');
+  if (rd) { openDiaryRead(rd.dataset.id); return; }
   const sh = t.closest('.share-btn');
   if (sh) {
     const it = getItems('diary').find(x => x.id === sh.dataset.id);
@@ -756,6 +769,190 @@ document.addEventListener('click', function (e) {
     }
   }
 });
+
+
+// ===== 圖文混合日記（B 方案）：唯一 ID 標記 + 圖文交錯閱讀模式（2026-10-30）=====
+const IMG_MARK_RE = /〔img:([A-Za-z0-9]+)〕/g;
+
+function diaryMixedHtml(it) {
+  const text = String(it.text || '');
+  const imgs = Array.isArray(it.images) ? it.images : [];
+  const byId = {};
+  imgs.forEach(m => { byId[m.id] = m; });
+  const used = {};
+  let out = '', last = 0, m;
+  IMG_MARK_RE.lastIndex = 0;
+  while ((m = IMG_MARK_RE.exec(text))) {
+    const seg = text.slice(last, m.index).trim();
+    if (seg) out += `<p>${escHtml(seg).replace(/\n/g, '<br>')}</p>`;
+    if (byId[m[1]]) { out += diaryFigHtml(byId[m[1]]); used[m[1]] = 1; }
+    last = m.index + m[0].length;
+  }
+  const tail = text.slice(last).trim();
+  if (tail) out += `<p>${escHtml(tail).replace(/\n/g, '<br>')}</p>`;
+  const rest = imgs.filter(x => !used[x.id]);
+  if (rest.length) out += rest.map(diaryFigHtml).join('');
+  if (!out.trim()) out = '<p class="dm-empty">這一天還沒有內容</p>';
+  return out;
+}
+
+function diaryFigHtml(m) {
+  const cap = String(m.caption || '').trim();
+  return `<figure class="dm-fig" data-img="${m.id}">
+    <img data-mid="${m.id}" src="${m.thumb || ''}" alt="">
+    <figcaption class="dm-cap${cap ? '' : ' empty'}" data-cap="${m.id}">${cap ? escHtml(cap) : '加一句說明…'}</figcaption>
+    <div class="dm-tools">
+      <button type="button" data-mv="up" data-id="${m.id}" aria-label="上移">↑</button>
+      <button type="button" data-mv="down" data-id="${m.id}" aria-label="下移">↓</button>
+      <button type="button" data-capedit="${m.id}">說明</button>
+      <button type="button" data-replace="${m.id}">換圖</button>
+      <button type="button" data-imgdel="${m.id}">刪除</button>
+    </div>
+  </figure>`;
+}
+
+function openDiaryRead(itemId) {
+  const it = getItems('diary').find(x => x.id === itemId);
+  if (!it) return;
+  let el = document.getElementById('dcRead');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dcRead';
+    el.innerHTML = `<div class="dc-read-mask"></div>
+      <div class="dc-read-card">
+        <div class="dc-read-head"><b id="dcReadTitle">閱讀</b><span class="dc-read-close" id="dcReadClose" aria-label="關閉">✕</span></div>
+        <div class="dc-read-body" id="dcReadBody"></div>
+      </div>`;
+    document.body.appendChild(el);
+    el.querySelector('#dcReadClose').addEventListener('click', () => el.classList.remove('show'));
+    el.querySelector('.dc-read-mask').addEventListener('click', () => el.classList.remove('show'));
+    const body = el.querySelector('#dcReadBody');
+    body.addEventListener('click', ev => {
+      const t = ev.target;
+      if (!t.closest) return;
+      const btn = t.closest('button');
+      if (btn) {
+        const id = btn.dataset.id || btn.dataset.capedit || btn.dataset.replace || btn.dataset.imgdel;
+        const cur = getItems('diary').find(x => x.id === body.dataset.item);
+        if (!cur) return;
+        if (btn.dataset.mv) { moveDiaryMarker(cur, id, btn.dataset.mv === 'up' ? -1 : 1); return; }
+        if (btn.dataset.capedit) { editDiaryCaption(cur, id); return; }
+        if (btn.dataset.replace) { replaceDiaryImage(cur, id); return; }
+        if (btn.dataset.imgdel) { deleteDiaryImage(cur, id); return; }
+        return;
+      }
+      const capEl = t.closest('.dm-cap');
+      if (capEl && capEl.dataset.cap) {
+        const cur = getItems('diary').find(x => x.id === body.dataset.item);
+        if (cur) editDiaryCaption(cur, capEl.dataset.cap);
+      }
+    });
+  }
+  el.classList.add('show');
+  el.querySelector('#dcReadBody').dataset.item = it.id;
+  renderDiaryRead(it);
+}
+
+function renderDiaryRead(it) {
+  const el = document.getElementById('dcRead');
+  if (!el) return;
+  el.querySelector('#dcReadTitle').textContent = String(it.date || '').trim() + (it.mood ? ' · ' + it.mood : '');
+  const body = el.querySelector('#dcReadBody');
+  body.innerHTML = diaryMixedHtml(it);
+  body.scrollTop = 0;
+  // 縮圖先頂著，再換成原圖
+  body.querySelectorAll('img[data-mid]').forEach(img => {
+    const id = img.dataset.mid;
+    if (!window.__ppDiaryBlob) return;
+    window.__ppDiaryBlob.get(id).then(b => { if (b) img.src = URL.createObjectURL(b); });
+  });
+}
+
+function saveDiaryItem(it) {
+  const arr = getItems('diary');
+  const i = arr.findIndex(x => x.id === it.id);
+  if (i >= 0) arr[i] = it;
+  saveData();
+  if (window.__ppDiaryRerender) window.__ppDiaryRerender();
+}
+
+function moveDiaryMarker(it, id, dir) {
+  const mk = '〔img:' + id + '〕';
+  let t = String(it.text || '');
+  const at = t.indexOf(mk);
+  if (at < 0) { tipToast('這張圖不在文中（會排在最後）'); return; }
+  if (dir < 0) {
+    const before = t.slice(0, at);
+    const cut = before.lastIndexOf('\n\n');
+    if (cut < 0) { tipToast('已經在最前面'); return; }
+    const mid = before.slice(cut + 2);
+    it.text = before.slice(0, cut + 2) + mk + (mid ? '\n' + mid.replace(/^\n+/, '') : '') + t.slice(at + mk.length).replace(/^\n+/, '\n');
+  } else {
+    const after = t.slice(at + mk.length);
+    const cut = after.indexOf('\n\n');
+    if (cut < 0) { tipToast('已經在最後面'); return; }
+    const first = after.slice(0, cut);
+    const rest = after.slice(cut + 2);
+    it.text = t.slice(0, at).replace(/\n+$/, '') + (first.trim() ? '\n' + first.trim() : '') + '\n' + mk + '\n' + rest;
+  }
+  saveDiaryItem(it);
+  renderDiaryRead(it);
+  tipToast('已調整位置');
+}
+
+function editDiaryCaption(it, id) {
+  const im = (it.images || []).find(x => x.id === id);
+  if (!im) return;
+  const v = window.prompt('圖片說明（留空可清除）', im.caption || '');
+  if (v === null) return;
+  im.caption = String(v).trim();
+  saveDiaryItem(it);
+  renderDiaryRead(it);
+}
+
+function deleteDiaryImage(it, id) {
+  if (!window.confirm('刪除這張圖片？')) return;
+  it.text = String(it.text || '').split('〔img:' + id + '〕').join('');
+  it.images = (it.images || []).filter(x => x.id !== id);
+  saveDiaryItem(it);
+  renderDiaryRead(it);
+  tipToast('已刪除');
+}
+
+function replaceDiaryImage(it, id) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.addEventListener('change', async () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    try {
+      const readOne = (file, maxSide, q) => new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => {
+          const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res({ dataUrl: c.toDataURL('image/jpeg', q), w: c.width, h: c.height });
+        };
+        img.onerror = rej;
+        img.src = URL.createObjectURL(file);
+      });
+      const big = await readOne(f, 1600, 0.82);
+      const sm = await readOne(f, 280, 0.6);
+      if (window.__ppDiaryBlob) {
+        const blob = await (await fetch(big.dataUrl)).blob();
+        await window.__ppDiaryBlob.put(id, blob);
+      }
+      const im = (it.images || []).find(x => x.id === id);
+      if (im) { im.thumb = sm.dataUrl; im.w = big.w; im.h = big.h; }
+      saveDiaryItem(it);
+      renderDiaryRead(it);
+      tipToast('圖片已更換');
+    } catch (e) { tipToast('換圖失敗'); }
+  });
+  inp.click();
+}
 
 // ===== 奶油日常（方案 C）：日記頁統計、心情、AI 回顧（2026-10-30）=====
 function diaryStatsHtml() {
@@ -1936,6 +2133,7 @@ function renderItem(cat, it) {
         <span class="diary-summary">${escHtml(diarySummary(stripDiaryDate(it.text), it))}</span>
       </span>
       <span class="diary-date-out">${it.date||''}</span>
+      <button class="read-btn" data-id="${it.id}" aria-label="閱讀">${ico('eye', 16)}</button>
       <button class="share-btn" data-id="${it.id}" aria-label="分享">${ico('share', 16)}</button>
       <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
       <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>

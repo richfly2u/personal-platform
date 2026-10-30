@@ -78,6 +78,7 @@
 .dt-draft{font-size:.8rem;color:var(--text2)}
 .dt-imgs{display:flex;gap:9px;overflow-x:auto;padding:8px 0}
 .dt-thumb{position:relative;flex:0 0 auto}
+.dt-thumb.intext::after{content:'文中';position:absolute;left:4px;bottom:4px;background:rgba(239,175,88,.92);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px}
 .dt-thumb img{width:108px;height:108px;object-fit:cover;border-radius:12px;border:1px solid var(--border)}
 .dt-thumb b{position:absolute;top:-6px;right:-6px;background:#3d2c1e;color:#fff;width:18px;height:18px;border-radius:50%;
   display:grid;place-items:center;font-size:11px;cursor:pointer}
@@ -318,6 +319,30 @@
   }
   const toDataURL = b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); });
 
+  // ==== 圖文混合：圖片用唯一 ID 標記 〔img:ID〕插在文字游標處 ====
+  const mkOf = id => '〔img:' + id + '〕';
+  function insertMarker(id) {
+    const ta = inputEl;
+    if (!ta) return;
+    const v = ta.value || '';
+    const s0 = (typeof ta.selectionStart === 'number') ? ta.selectionStart : v.length;
+    const e0 = (typeof ta.selectionEnd === 'number') ? ta.selectionEnd : s0;
+    const before = v.slice(0, s0), after = v.slice(e0);
+    const lead = (before === '' || /\n$/.test(before)) ? '' : '\n';
+    const chunk = lead + mkOf(id) + '\n';
+    ta.value = before + chunk + after;
+    const pos = before.length + chunk.length;
+    try { ta.setSelectionRange(pos, pos); } catch (err) {}
+    ta.dispatchEvent(new Event('input'));
+  }
+  function stripMarker(id) {
+    if (!inputEl) return;
+    const t = String(inputEl.value || '');
+    const next = t.split(mkOf(id)).join('').replace(/\n{3,}/g, '\n\n');
+    if (next !== t) { inputEl.value = next; inputEl.dispatchEvent(new Event('input')); }
+  }
+  function hasMarker(id) { return inputEl ? String(inputEl.value || '').indexOf(mkOf(id)) >= 0 : false; }
+
   async function addImages(files) {
     touched = true;
     for (const f of files) {
@@ -327,7 +352,8 @@
         const sm = await imgFromFile(f, 280, 0.6);
         const id = uid();
         await putBlob(id, big.blob);
-        draft.images.push({ id, thumb: await toDataURL(sm.blob), w: big.w, h: big.h });
+        draft.images.push({ id, thumb: await toDataURL(sm.blob), w: big.w, h: big.h, caption: '' });
+        insertMarker(id);
       } catch (e) { toast("圖片處理失敗"); }
     }
     if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
@@ -485,7 +511,7 @@
     if (!toolsEl) return;
     const d = toolsEl.querySelector("#dtDraft");
     let h = "";
-    if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
+    if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb${hasMarker(m.id) ? ' intext' : ''}"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
     if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
     if (draft.sketch) h += `<div class="dt-sk">✏️ 手寫 1 張 <button type="button" data-delsketch="1">刪除</button></div>`;
     if (draft.rows.length) {
@@ -540,7 +566,7 @@
 
   function onClick(e) {
     const t = e.target;
-    if (t.dataset.delimg) { draft.images = draft.images.filter(x => x.id !== t.dataset.delimg); delBlob(t.dataset.delimg); paint(); return; }
+    if (t.dataset.delimg) { stripMarker(t.dataset.delimg); draft.images = draft.images.filter(x => x.id !== t.dataset.delimg); delBlob(t.dataset.delimg); paint(); return; }
     if (t.dataset.dtNext !== undefined && t.closest("[data-dt-next]")) {
       if (window.__ppDiaryFinish) window.__ppDiaryFinish();
       return;
@@ -693,7 +719,7 @@
   function takeDraft() {
     const d = draft || empty();
     const out = {};
-    if (d.images.length) out.images = d.images.map(x => ({ id: x.id, thumb: x.thumb, w: x.w, h: x.h }));
+    if (d.images.length) out.images = d.images.map(x => ({ id: x.id, thumb: x.thumb, w: x.w, h: x.h, caption: x.caption || '' }));
     if (d.audio) out.audio = d.audio;
     if (d.sketch) out.sketch = d.sketch;
     if (d.bg && d.bg !== "none") out.bg = d.bg;
@@ -714,5 +740,6 @@
     clearTimeout(tt); tt = setTimeout(() => el.classList.remove("on"), 1900);
   }
 
+  window.__ppDiaryBlob = { get: getBlob, put: putBlob };
   window.DiaryUI = { mount, loadEntry, takeDraft, hasDraft, extras, lineHtml, bgStyle, sizeStyle, afterRender, clearDraft, datePrefix, BGS };
 })();

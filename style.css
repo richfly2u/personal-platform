@@ -1900,3 +1900,43 @@ li.diary-li .share-btn svg { display: block; }
 @media (min-width: 900px) {
   .dc-ai-card { left: auto; right: 24px; bottom: 24px; width: 440px; max-height: 72vh; border-radius: 26px; }
 }
+
+/* ===== 圖文混合日記：閱讀模式（2026-10-30）===== */
+li.diary-li .read-btn { display: none; }
+li.diary-li.acting .read-btn { display: inline-flex; align-items: center; justify-content: center; }
+li.diary-li .read-btn svg { display: block; }
+
+.dc-read { position: fixed; inset: 0; z-index: 9998; display: none; }
+.dc-read.show { display: block; }
+.dc-read-mask { position: absolute; inset: 0; background: rgba(43,42,40,.36); }
+.dc-read-card {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 88vh;
+  background: #FFFBF4; border-radius: 26px 26px 0 0;
+  display: flex; flex-direction: column;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 40px rgba(60,50,40,.22);
+}
+.dc-read-head { display: flex; justify-content: space-between; align-items: center; font-size: .95rem; color: #2B2A28; padding-bottom: 8px; }
+.dc-read-close { color: #8A8378; padding: 4px 8px; cursor: pointer; }
+.dc-read-body { flex: 1; overflow-y: auto; padding: 4px 2px 8px; }
+.dc-read-body p { font-size: .95rem; line-height: 1.95; color: #2B2A28; margin: 0 0 12px; }
+.dm-empty { color: #A79C8B; }
+.dm-fig { margin: 4px 0 16px; }
+.dm-fig img {
+  display: block; width: 100%; height: auto; max-height: 60vh; object-fit: cover;
+  border-radius: 16px; background: #F3E7D6;
+}
+.dm-cap {
+  margin-top: 7px; font-size: .78rem; color: #8A8378; line-height: 1.7;
+  border-left: 2px solid #EFD3A6; padding-left: 8px; cursor: text;
+}
+.dm-cap.empty { color: #BEB3A2; font-style: normal; }
+.dm-tools { display: flex; gap: 6px; margin-top: 8px; }
+.dm-tools button {
+  border: 1px solid #F0E3D0; background: #fff; color: #8A8378;
+  font-size: .72rem; padding: 6px 10px; border-radius: 999px; cursor: pointer; min-height: 32px;
+}
+.dm-tools button:active { background: #FFF6E8; }
+@media (min-width: 900px) {
+  .dc-read-card { left: auto; right: 24px; bottom: 24px; width: 560px; max-height: 80vh; border-radius: 26px; }
+}
