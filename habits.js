@@ -231,8 +231,9 @@
 .hb-mask{position:fixed;inset:0;background:rgba(0,0,0,.42);display:none;z-index:40}
 .hb-mask.on{display:block}
 .hb-sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);border-radius:16px 16px 0 0;max-height:90vh;overflow:auto;
-  transform:translateY(102%);transition:transform .22s ease;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  transform:translateY(102%);transition:transform .22s ease;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .hb-sheet.on{transform:translateY(0)}
+.hb-foot{position:sticky;bottom:0;z-index:6;background:var(--card);padding:10px 14px 8px;margin:0 -14px;box-shadow:0 -10px 14px rgba(0,0,0,.06)}
 .hb-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 4px}
 .hb-hd .t{font-size:.98rem;font-weight:700}
 .hb-fld{padding:9px 14px}
@@ -313,7 +314,7 @@
       <div class="hb-fld" id="hbWeeklyWrap" style="display:none"><label>每週次數</label><input class="hb-inp" id="hbWeeklyN" type="number" min="1" max="7" value="3" style="width:110px"></div>
       <div class="hb-fld"><label>提醒時間（可留空）</label><input class="hb-inp" id="hbRemind" type="time" style="width:150px"></div>
       <div class="hb-fld"><div class="hb-2"><button class="hb-btn" id="hbUp">↑ 上移</button><button class="hb-btn" id="hbDown">↓ 下移</button></div></div>
-      <div class="hb-fld"><div class="hb-2"><button class="hb-btn warn" id="hbDel">刪除</button><button class="hb-btn primary" id="hbSave">儲存</button></div></div>
+      <div class="hb-foot"><div class="hb-2"><button class="hb-btn warn" id="hbDel">刪除</button><button class="hb-btn primary" id="hbSave">儲存</button></div></div>
     </div>
     <div class="hb-sheet" id="hbVSheet">
       <div class="hb-hd"><div class="t" id="hbVTitle">記錄</div><button class="hb-btn" id="hbVClose">關閉</button></div>
@@ -322,7 +323,7 @@
       <div class="hb-steps" id="hbVSteps"></div>
       <div class="hb-fld" style="margin-top:8px"><label>手動輸入</label>
         <input class="hb-inp" id="hbVInput" type="number" inputmode="decimal" step="any" placeholder="輸入數值"></div>
-      <div class="hb-fld"><div class="hb-2"><button class="hb-btn warn" id="hbVClear">清除這天</button><button class="hb-btn primary" id="hbVSave">完成</button></div></div>
+      <div class="hb-fld"><div class="hb-2"><button class="hb-btn warn" id="hbVClear">清除這天</button><button class="hb-btn primary" id="hbVSave">儲存</button></div></div>
     </div>
     <div class="hb-toast" id="hbToast"></div>
     <input type="file" id="hbFile" accept="application/json" style="display:none">`;
@@ -674,6 +675,12 @@
       S.habits.forEach((x, i) => x.order = i);
       save(); closeSheet(); render(); toast("已刪除");
     });
+    const vCommit = () => { $("#hbVSave").click(); };
+    const vInp = $("#hbVInput");
+    if (vInp) {
+      vInp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); vCommit(); } });
+      vInp.addEventListener("change", () => { const n = parseFloat(vInp.value); if (!isNaN(n)) { vVal = Math.max(0, n); drawValue(); } });
+    }
     $("#hbVSave").addEventListener("click", () => {
       const raw = $("#hbVInput").value;
       if (raw !== "") { const n = parseFloat(raw); if (!isNaN(n)) vVal = Math.max(0, n); }
