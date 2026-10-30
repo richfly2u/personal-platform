@@ -546,6 +546,18 @@
   }
 
   // 合併：同名習慣視為同一個；打卡紀錄取每天最大值，不覆蓋現有資料
+  // 舊站「搬到新平台（一鍵）」：資料放在網址片段，讀到即合併並清掉片段
+  function consumeHash() {
+    try {
+      const m = /habitdata=([A-Za-z0-9+/=%._-]+)/.exec(location.hash || "");
+      if (!m) return;
+      const raw = decodeURIComponent(escape(atob(decodeURIComponent(m[1]))));
+      const obj = JSON.parse(raw);
+      history.replaceState(null, "", location.pathname + location.search);
+      if (obj && Array.isArray(obj.habits)) mergeState(obj);
+    } catch (e) {}
+  }
+
   function mergeState(old) {
     let added = 0, merged = 0;
     (old.habits || []).forEach(oh => {
@@ -689,6 +701,7 @@
       if (!S) S = load();
       if (!calSel) calSel = today();
       if (!calCursor) calCursor = startOfMonth(new Date());
+      consumeHash();
       const same = (host === el) && !!(el && el.querySelector("#hbAdd"));
       host = el;
       if (!same) { el.innerHTML = shell(); bind(); }
