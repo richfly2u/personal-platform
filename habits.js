@@ -517,40 +517,32 @@
   /* ---------- 匯出／匯入 ---------- */
   // 與舊版 kindhome.net/habits 整合：用隱藏 iframe + postMessage 取回它的 habit.v2（同一個 App 的另一份資料）
   function mergeFromOld() {
-    // 舊版 kindhome.net/habits 的資料存在它自己的網域；舊站已加一支橋接腳本，
-    // 被 iframe 載入時會用 postMessage 把 habit.v2 回傳。這裡自動取回並合併。
-    const OLD = "https://kindhome.net/habits/?bridge=1";
-    let settled = false;
+    // 舊版 kindhome.net/habits 的資料在它自己的網域（第三方 iframe 讀不到 localStorage，要用視窗）。
+    const URL_BRIDGE = "https://kindhome.net/habits/?bridge=1";
+    const URL_EXPORT = "https://kindhome.net/habits/?exportauto=1&v=" + Date.now();
+    let settled = false, win = null;
     toast("正在讀取舊版資料…");
-    function cleanup() {
-      window.removeEventListener("message", onMsg);
-      try { if (frame.parentNode) frame.parentNode.removeChild(frame); } catch (e) {}
-    }
     function onMsg(ev) {
       if (!ev.data || ev.data.type !== "PP_HABIT_DATA") return;
       settled = true;
-      clearTimeout(timer);
-      cleanup();
+      window.removeEventListener("message", onMsg);
+      try { if (win && !win.closed) win.close(); } catch (e) {}
       try {
         const old = JSON.parse(ev.data.payload || "null");
         if (!old || !Array.isArray(old.habits)) { toast("舊版沒有可整合的資料"); return; }
         mergeState(old);
       } catch (e) { toast("舊版資料格式讀不到"); }
     }
-    const frame = document.createElement("iframe");
-    frame.style.cssText = "position:fixed;left:-9999px;top:0;width:360px;height:520px;border:0";
-    document.body.appendChild(frame);
     window.addEventListener("message", onMsg);
-    frame.src = OLD;
-    frame.addEventListener("load", () => { try { frame.contentWindow.postMessage({ type: "PP_HABIT_PULL" }, "*"); } catch (e) {} });
-    const timer = setTimeout(() => {
+    try { win = window.open(URL_BRIDGE, "ppHabBridge", "width=430,height=720"); } catch (e) {}
+    setTimeout(() => {
       if (settled) return;
-      cleanup();
-      // 保底：開舊站給他按匯出，並同時開選檔
-      try { window.open("https://kindhome.net/habits/", "_blank"); } catch (e) {}
-      toast("自動讀取失敗，請在舊版按「匯出」再選檔");
-      setTimeout(() => { try { $("#hbFile").click(); } catch (e) {} }, 800);
-    }, 7000);
+      window.removeEventListener("message", onMsg);
+      // 保底：改成自動下載 JSON，回來這裡選檔
+      try { if (win && !win.closed) win.location.href = URL_EXPORT; } catch (e) {}
+      toast("已改成自動匯出，請選剛下載的檔案");
+      setTimeout(() => { try { $("#hbFile").click(); } catch (e) {} }, 900);
+    }, 9000);
   }
 
   // 合併：同名習慣視為同一個；打卡紀錄取每天最大值，不覆蓋現有資料
