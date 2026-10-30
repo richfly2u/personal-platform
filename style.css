@@ -2103,3 +2103,39 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 .dbar .dkfilter { flex: none; border: 1px solid #EDE0CB; background: #fff; color: #8A8378; font-size: .74rem;
   line-height: 1; padding: 6px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .dbar .dkfilter.on { background: #EFF3EC; border-color: #D6E0CF; color: #5F7C59; font-weight: 700; }
+
+/* 修正：搜尋輸入框溢出膠囊（全域 input 樣式把高度撐到 42px）2026-10-30 */
+.h2-row { position: relative; z-index: 2; }
+.dsearch-wrap { height: 34px; min-height: 34px; padding: 0 3px 0 12px; overflow: hidden; box-sizing: border-box; }
+.dsearch-wrap input,
+.dsearch-wrap input[type="search"],
+.dsearch-wrap input[type="text"] {
+  height: 30px !important; min-height: 0 !important; max-height: 30px !important; line-height: 30px !important;
+  padding: 0 !important; margin: 0 !important; border: 0 !important; background: transparent !important;
+  box-shadow: none !important; border-radius: 0 !important; box-sizing: border-box !important;
+  font-size: .82rem !important; vertical-align: middle;
+}
+.dsearch-toggle { height: 28px !important; width: 28px !important; }
+
+/* 搜尋列 v2（新類名 dsw，隔離所有舊全域 input 樣式）2026-10-30 */
+.dsw { flex: 1 1 auto; min-width: 0; display: flex !important; align-items: center !important;
+  height: 34px !important; box-sizing: border-box !important; overflow: hidden;
+  border: 1px solid #EBDFCC !important; border-radius: 999px !important; background: #fff !important; padding: 0 3px 0 12px !important; }
+.dsw .dsw-in, input.dsw-in, input.dsw-in[type="text"] {
+  -webkit-appearance: none !important; appearance: none !important;
+  flex: 1 1 auto !important; width: auto !important; min-width: 0 !important;
+  height: 30px !important; min-height: 0 !important; max-height: 30px !important; line-height: 30px !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; outline: 0 !important;
+  background: transparent !important; background-image: none !important;
+  box-shadow: none !important; border-radius: 0 !important; box-sizing: border-box !important;
+  color: #6B6355 !important; font-size: .84rem !important; font-family: inherit !important; }
+.dsw .dsw-in::-webkit-search-decoration, .dsw .dsw-in::-webkit-search-cancel-button,
+.dsw .dsw-in::-webkit-search-results-button, .dsw .dsw-in::-webkit-search-results-decoration { -webkit-appearance: none !important; display: none !important; }
+.dsw .dsw-in::placeholder { color: #B7AC9C !important; }
+.dsw .dsw-btn, button.dsw-btn {
+  -webkit-appearance: none !important; appearance: none !important;
+  flex: 0 0 auto !important; display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  width: 28px !important; height: 28px !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important;
+  border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 50% !important;
+  color: #A29684 !important; cursor: pointer; }
+.dsw .dsw-btn:active { background: #F6EEE2 !important; }

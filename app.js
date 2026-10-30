@@ -1319,9 +1319,9 @@ function diaryDayCardHtml(list) {
 
 function diarySearchHtml() {
   const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
-  return `<div class="dsearch-wrap open" id="dsearchWrap">
-    <input id="diarySearch" type="search" placeholder="搜尋日記" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記">
-    <button type="button" class="dsearch-toggle" id="dsearchToggle" aria-label="搜尋日記">${ico('search', 18)}</button>
+  return `<div class="dsw" id="dsearchWrap">
+    <input id="diarySearch" class="dsw-in" type="text" inputmode="search" placeholder="搜尋日記" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記">
+    <button type="button" class="dsw-btn" id="dsearchToggle" aria-label="搜尋日記">${ico('search', 18)}</button>
   </div>`;
 }
 
