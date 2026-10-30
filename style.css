@@ -1787,6 +1787,17 @@ li.diary-li .diary-summary {
   color: var(--text);
 }
 
+/* 待辦與日記：編輯／刪除圖示預設隱藏，點該項目才出現 */
+li.todo-li .edit-btn, li.todo-li .del-btn,
+li.diary-li .edit-btn, li.diary-li .del-btn { display: none; }
+li.todo-li.acting .edit-btn, li.todo-li.acting .del-btn,
+li.diary-li.acting .edit-btn, li.diary-li.acting .del-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+li.todo-li.acting, li.diary-li.acting { background: #fffdf7; }
+
 /* === 桌面版（≥900px）：首頁兩欄，不再是一條細長條 === */
 @media (min-width: 900px) {
   body { max-width: 1040px; }

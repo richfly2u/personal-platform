@@ -46,7 +46,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '59';
+const APP_VERSION = '60';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -690,6 +690,18 @@ window.__ppDiaryCommit = function () {
 document.addEventListener('click', function (e) {
   const btn = e.target && e.target.closest ? e.target.closest('#diaryAddBtn') : null;
   if (btn) { e.preventDefault(); window.__ppDiaryCommit(); }
+});
+
+// 待辦／日記：編輯與刪除圖示預設隱藏，點該項目才出現（前賢 2026-10-30）
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  const li = t.closest('li.todo-li, li.diary-li');
+  const isAction = t.closest('.edit-btn,.del-btn,.todo-check,.q-badge,audio,video,a,button,input,textarea,select,label');
+  document.querySelectorAll('li.acting').forEach(function (x) { if (x !== li) x.classList.remove('acting'); });
+  if (!li) return;
+  if (isAction) return;
+  li.classList.toggle('acting');
 });
 
 // 日記列表只顯示摘要（前賢 2026-10-30：不用全顯示）
