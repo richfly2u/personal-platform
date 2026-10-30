@@ -154,13 +154,20 @@
   }
   const dueToday = () => activeHabits().filter(h => isScheduled(h, new Date()));
   const numFmt = v => Number.isInteger(v) ? v.toLocaleString("en-US") : v.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  // 計時的單位換算：分（60 秒）或時（3600 秒），其餘視為分
+  function tMul(unit) { return /時|小時|hour|h$/i.test(String(unit || "")) ? 3600 : 60; }
+  function timerTargetText(h) {
+    const u = h.unit || "分";
+    const n = (h.target || 1800) / tMul(u);
+    return (Number.isInteger(n) ? n : Math.round(n * 10) / 10) + u;
+  }
   function fmtVal(h, v) {
     if (h.kind === "timer") { const m = Math.floor(v / 60), s = v % 60; return s ? m + "分" + String(s).padStart(2, "0") + "秒" : m + "分"; }
     if (h.kind === "count") return numFmt(v) + (h.unit || "");
     return "";
   }
   function hintText(h) {
-    if (h.kind === "timer") return "今日 " + fmtVal(h, val(h, today())) + " / 目標 " + Math.round((h.target || 1800) / 60) + "分";
+    if (h.kind === "timer") return "今日 " + fmtVal(h, val(h, today())) + " / 目標 " + timerTargetText(h);
     if (h.kind === "count") return "今日 " + fmtVal(h, val(h, today())) + " / 目標 " + fmtVal(h, h.target || 1);
     return "";
   }
@@ -450,7 +457,7 @@
     const h = vHabit; if (!h) return;
     $("#hbVNum").textContent = h.kind === "timer" ? (Math.floor(vVal / 60) + " 分 " + String(vVal % 60).padStart(2, "0") + " 秒") : numFmt(vVal);
     $("#hbVUnit").textContent = h.kind === "timer"
-      ? ("今日累計 · 目標 " + Math.round((h.target || 1800) / 60) + " 分")
+      ? ("今日累計 · 目標 " + timerTargetText(h))
       : ("單位 " + (h.unit || "次") + " · 目標 " + fmtVal(h, h.target || 1));
     $("#hbVInput").value = h.kind === "timer" ? "" : (vVal || "");
     const btn = $("#hbVStart");
@@ -488,10 +495,15 @@
   function paintKind() {
     $("#hbKind").querySelectorAll("[data-kind]").forEach(b => b.classList.toggle("on", b.dataset.kind === draft.kind));
     $("#hbTargetWrap").style.display = draft.kind === "check" ? "none" : "block";
-    $("#hbTargetHint").textContent = draft.kind === "timer" ? "計時以秒記錄，目標請填分鐘（例 30）" : "每次記錄會累加，達到目標即完成";
+    $("#hbTargetHint").textContent = draft.kind === "timer" ? "計時會自動累計秒數，單位可填「分」或「時」，目標填數字（例 30 分）" : "每次記錄會累加，達到目標即完成";
     const kw = $("#hbKindHint");
     if (kw) kw.textContent = draft.kind === "check" ? "要設每日目標或單位（例如喝水 2000 ml），請選「數字累計」或「計時」" : "";
-    if (draft.kind === "timer") { $("#hbUnit").disabled = true; $("#hbUnit").value = ""; $("#hbTarget").value = Math.round((draft.target > 60 ? draft.target : 1800) / 60); }
+    if (draft.kind === "timer") {
+      $("#hbUnit").disabled = false;
+      draft.unit = draft.unit || "分";
+      $("#hbUnit").value = draft.unit;
+      $("#hbTarget").value = Math.round((draft.target > 60 ? draft.target : 1800) / tMul(draft.unit));
+    }
     else if (draft.kind === "count") { $("#hbUnit").disabled = false; $("#hbTarget").value = draft.target > 1 ? draft.target : ""; $("#hbUnit").value = draft.unit || ""; }
     else $("#hbUnit").disabled = false;
   }
@@ -518,7 +530,11 @@
     draft.remind = $("#hbRemind").value || "";
     draft.freq.n = Math.max(1, Math.min(7, parseInt($("#hbWeeklyN").value || "3", 10) || 3));
     const t = parseFloat($("#hbTarget").value);
-    if (draft.kind === "timer") { draft.target = Math.max(60, (isNaN(t) ? 30 : t) * 60); draft.unit = "分"; }
+    if (draft.kind === "timer") {
+      const u = ($("#hbUnit").value || "").trim() || "分";
+      draft.target = Math.max(60, (isNaN(t) ? 30 : t) * tMul(u));
+      draft.unit = u;
+    }
     else if (draft.kind === "count") { draft.target = (isNaN(t) || t <= 0) ? 1 : t; draft.unit = ($("#hbUnit").value || "").trim(); }
     else { draft.target = 1; draft.unit = ""; }
     if (!draft.name) { toast("請輸入名稱"); return; }
