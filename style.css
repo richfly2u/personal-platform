@@ -2149,3 +2149,12 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 .dm-yt, .ed-yt { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; }
 .dm-yt iframe, .ed-yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .ed-vmiss { padding: 18px 12px; text-align: center; font-size: 13px; color: #8b7d6b; background: #f7f1e6; border-radius: 12px; }
+/* ==== 日記卡片就地展開：點卡片直接看整篇（不用載入上方輸入框）2026-10-30 ==== */
+.dcard-full { margin-top: 8px; }
+.dcard-full .dm-body, .dcard-full .dm-mixed { margin: 0; }
+li.dcard.expanded .dcard-text { display: none; }
+.drow.expanded .dcard-text { display: none; }
+.drow.expanded { border-top: 1px dashed rgba(140,120,90,.25); }
+.dcard-full figure, .dcard-full .dm-fig { margin: 8px 0; }
+.dcard-full img, .dcard-full video { max-width: 100%; border-radius: 10px; }
+.dcard-full .dm-yt { margin: 8px 0; }

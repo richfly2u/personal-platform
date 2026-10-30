@@ -68,7 +68,8 @@ let appData = {
 let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
 let newQuad = 1;
-let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
+let diaryCurId = null;
+let diaryExpanded = new Set();   // 卡片就地展開的日記 id（點卡片展開全文，不用載入上方輸入框）   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let diaryFresh = false;  // 進入日記頁一律從空白開始（前賢 2026-10-30 要求）
 let diaryMood = '';      // 日記心情（奶油日常，2026-10-30）
 let diaryKind = '';      // 日記屬性（敘事／觀察／心得／反思／抒懷，2026-10-30）
@@ -745,9 +746,15 @@ document.addEventListener('click', function (e) {
   if (!t || !t.closest) return;
   const li = t.closest('li.todo-li, li.diary-li');
   const isAction = t.closest('.edit-btn,.del-btn,.todo-check,.q-badge,audio,video,a,button,input,textarea,select,label');
-  document.querySelectorAll('li.acting').forEach(function (x) { if (x !== li) x.classList.remove('acting'); });
   if (!li) return;
   if (isAction) return;
+  // 日記：點卡片（或同日多篇的某一列）＝在框內直接展開整篇內容；再點一次收合
+  if (li.classList.contains('diary-li')) {
+    const row = t.closest('.drow');
+    toggleDiaryExpand(row ? row.dataset.id : li.dataset.id);
+    return;
+  }
+  document.querySelectorAll('li.acting').forEach(function (x) { if (x !== li) x.classList.remove('acting'); });
   li.classList.toggle('acting');
 });
 
@@ -1273,8 +1280,9 @@ function diaryCardHtml(it) {
   const prev = diaryPreview(it);
   const thumb = (it.images && it.images[0] && it.images[0].thumb) || (it.sketch && it.sketch.thumb) || '';
   const nImg = (it.images || []).length;
+  const exp = diaryExpanded.has(it.id);
   return `
-    <li class="diary-li dcard" data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI ? window.DiaryUI.bgStyle(it) : ''}">
+    <li class="diary-li dcard${exp ? ' expanded' : ''}" data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI ? window.DiaryUI.bgStyle(it) : ''}">
       <div class="dcard-date"><b>${d ? d.getDate() : '•'}</b><span>${d ? '週' + WD[d.getDay()] : ''}</span>${emo ? `<em class="dcard-emo">${emo}</em>` : ''}</div>
       <div class="dcard-main">
         <div class="dcard-meta">
@@ -1284,8 +1292,9 @@ function diaryCardHtml(it) {
           <button type="button" class="dcard-more" aria-label="更多操作">⋯</button>
         </div>
         <div class="dcard-text${prev ? '' : ' is-empty'}">${prev ? escHtml(prev) : '（沒有文字）'}</div>
+        ${exp ? `<div class="dcard-full" data-full="${it.id}">${diaryMixedHtml(it)}</div>` : ''}
       </div>
-      ${thumb ? `<div class="dcard-thumb"><img src="${thumb}" alt="">${nImg > 1 ? `<i>+${nImg - 1}</i>` : ''}</div>` : ''}
+      ${thumb && !exp ? `<div class="dcard-thumb"><img src="${thumb}" alt="">${nImg > 1 ? `<i>+${nImg - 1}</i>` : ''}</div>` : ''}
       ${diaryActsHtml(it.id)}
     </li>`;
 }
@@ -1304,9 +1313,11 @@ function diaryDayCardHtml(list) {
     const tm = String(it.date || '').match(/(\d{1,2}:\d{2})/);
     const prev = diaryPreview(it);
     const tags = diaryTags(it);
-    return `<div class="drow" data-id="${it.id}">
+    const expRow = diaryExpanded.has(it.id);
+    return `<div class="drow${expRow ? ' expanded' : ''}" data-id="${it.id}">
         <div class="drow-head">${tm ? `<span class="drow-time">${tm[1]}</span>` : ''}${it.kind ? `<span class="dcard-kind">${escHtml(it.kind)}</span>` : ''}${tags.length ? `<span class="dcard-tags">${tags.join(' ')}</span>` : ''}</div>
         <div class="dcard-text${prev ? '' : ' is-empty'}">${prev ? escHtml(prev) : '（沒有文字）'}</div>
+        ${expRow ? `<div class="dcard-full" data-full="${it.id}">${diaryMixedHtml(it)}</div>` : ''}
         ${diaryActsHtml(it.id)}
       </div>`;
   }).join('');
@@ -1382,6 +1393,27 @@ function diaryCardsHtml(items) {
     return `<div class="dmon-head" data-mon="${g.key}"><span>${g.label}</span><span class="n">${g.list.length} 篇</span><span class="caret">${closed ? '▸' : '▾'}</span></div>`
       + (closed ? '' : body);
   }).join('');
+}
+
+function toggleDiaryExpand(id) {
+  if (!id) return;
+  if (diaryExpanded.has(id)) diaryExpanded.delete(id);
+  else { diaryExpanded.clear(); diaryExpanded.add(id); }
+  diaryRefreshCards();
+  hydrateDiaryMedia(document.getElementById('diaryCards'));
+}
+
+// 卡片內展開的附件：先顯示縮圖，再換成 IndexedDB 原檔
+function hydrateDiaryMedia(root) {
+  if (!root || !window.__ppDiaryBlob) return;
+  root.querySelectorAll('.dcard-full img[data-mid]').forEach(img => {
+    const id = img.dataset.mid;
+    window.__ppDiaryBlob.get(id).then(b => { if (b) img.src = URL.createObjectURL(b); });
+  });
+  root.querySelectorAll('.dcard-full video[data-vmid]').forEach(v => {
+    const id = v.dataset.vmid;
+    window.__ppDiaryBlob.get(id).then(b => { if (b) v.src = URL.createObjectURL(b); });
+  });
 }
 
 function diaryRefreshCards() {
