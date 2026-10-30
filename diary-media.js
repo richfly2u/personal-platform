@@ -137,7 +137,7 @@
   }
 
   let draft = null;
-  const empty = () => ({ images: [], audio: null, bg: "none", rows: [], sketch: null, size: "" });
+  const empty = () => ({ images: [], videos: [], audio: null, bg: "none", rows: [], sketch: null, size: "" });
   let toolsEl = null, inputEl = null, popEl = null, fileEl = null;
 
   function mount(formEl, catId) {
@@ -166,7 +166,7 @@
       </div>
       <div class="dt-meta"><span class="dt-saved" id="dtSaved"></span></div>
       <div class="dt-pop" id="dtPop"></div>
-      <input type="file" id="dtFile" accept="image/*" multiple style="display:none">`;
+      <input type="file" id="dtFile" accept="image/*,video/*" multiple style="display:none">`;
     const host = formEl.querySelector("#diaryTools") || formEl;
     host.appendChild(toolsEl);
     popEl = toolsEl.querySelector("#dtPop");
@@ -245,6 +245,7 @@
     if (!liveText && o.text) liveText = o.text;
     if (inputEl && !edValue(inputEl).trim() && liveText) edSet(liveText);
     if (!memHas && o.d) draft = Object.assign(empty(), o.d);
+    if (draft && !Array.isArray(draft.videos)) draft.videos = [];
     if ((o.text && o.text.trim()) || (o.d && ((o.d.images || []).length || o.d.audio || o.d.sketch || (o.d.rows || []).length))) {
       markSaved("已還原草稿");
       if (inputEl && edValue(inputEl)) inputEl.dispatchEvent(new Event("input", { bubbles: true }));
@@ -271,14 +272,15 @@
     clearTimeout(saveTimer);
     suppressSave = true;
     liveText = stripStamp(item.text || "");
-    const itemHasMedia = (item.images || []).length || item.audio || item.sketch || (item.rows || []).length;
+    const itemHasMedia = (item.images || []).length || (item.videos || []).length || item.audio || item.sketch || (item.rows || []).length;
     // 先還原附件，再組編輯器內容：圖片節點要用 draft.images 才長得出來
     if (itemHasMedia || !draft || (!draft.images.length && !draft.audio && !draft.sketch && !draft.rows.length)) {
       draft = {
-        images: item.images || [], audio: item.audio || null, sketch: item.sketch || null,
+        images: item.images || [], videos: item.videos || [], audio: item.audio || null, sketch: item.sketch || null,
         rows: item.rows || [], bg: item.bg || "none", size: item.size || ""
       };
     }
+    if (draft && !Array.isArray(draft.videos)) draft.videos = [];
     if (inputEl && edValue(inputEl) !== liveText) edSet(liveText);
     autoSizeTa();
     paint();
@@ -323,6 +325,7 @@
 
   // ==== 圖文混合：圖片用唯一 ID 標記 〔img:ID〕插在文字游標處 ====
   const mkOf = id => '〔img:' + id + '〕';
+  const vkOf = id => '〔vid:' + id + '〕';
   // ==== 內嵌圖文編輯器配接層：日記用 div contenteditable，圖片直接在文字之間 ====
   const isDiv = el => !!el && el.tagName !== 'TEXTAREA' && el.tagName !== 'INPUT';
   const escH = str => String(str == null ? '' : str).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -335,6 +338,7 @@
     const walk = parent => {
       parent.childNodes.forEach(n => {
         if (n.nodeType === 3) out += n.textContent;
+        else if (n.nodeName === 'FIGURE' && n.dataset && n.dataset.vid) out += '\n' + vkOf(n.dataset.vid) + '\n';
         else if (n.nodeName === 'FIGURE' && n.dataset && n.dataset.img) out += '\n' + mkOf(n.dataset.img) + '\n';
         else if (n.nodeName === 'BR') out += '\n';
         else if (n.nodeType === 1) {
@@ -362,21 +366,44 @@
     return fig;
   }
 
+  function buildVid(id) {
+    const vd = (draft.videos || []).find(x => x.id === id);
+    if (!vd) return null;
+    const fig = document.createElement('figure');
+    fig.className = 'ed-fig ed-vid'; fig.dataset.vid = id; fig.contentEditable = 'false';
+    const v = document.createElement('video');
+    v.controls = true; v.playsInline = true; v.preload = 'metadata';
+    if (vd.poster) v.poster = vd.poster;
+    window.__ppDiaryBlob.get(id).then(b => { if (b) v.src = URL.createObjectURL(b); });
+    const cap = document.createElement('figcaption');
+    cap.className = 'ed-cap'; cap.contentEditable = 'true'; cap.dataset.vcap = id;
+    cap.textContent = vd.caption || '';
+    fig.appendChild(v); fig.appendChild(cap);
+    return fig;
+  }
+
   function edSet(text) {
     const node = inputEl;
     if (!node) return;
     if (!isDiv(node)) { node.value = text; return; }
-    const parts = String(text == null ? '' : text).split(/〔img:([A-Za-z0-9]+)〕/g);
+    const src = String(text == null ? '' : text);
     node.innerHTML = '';
-    for (let i = 0; i < parts.length; i++) {
-      if (i % 2 === 1) { const f = buildFig(parts[i]); if (f) node.appendChild(f); continue; }
-      const chunk = parts[i];
-      if (!chunk) continue;
+    const re = /〔(img|vid):([A-Za-z0-9]+)〕/g;
+    let last = 0, m;
+    const pushText = chunk => {
+      if (!chunk) return;
       chunk.split('\n').forEach((line, idx) => {
         if (idx) node.appendChild(document.createElement('br'));
         if (line) node.appendChild(document.createTextNode(line));
       });
+    };
+    while ((m = re.exec(src))) {
+      pushText(src.slice(last, m.index));
+      const el = (m[1] === 'vid') ? buildVid(m[2]) : buildFig(m[2]);
+      if (el) node.appendChild(el);
+      last = m.index + m[0].length;
     }
+    pushText(src.slice(last));
   }
 
   function edInsert(node) {
@@ -421,6 +448,32 @@
     try { ta.setSelectionRange(before.length + chunk.length, before.length + chunk.length); } catch (err) {}
     ta.dispatchEvent(new Event('input'));
   }
+  function insertVidMarker(id) {
+    if (!inputEl) return;
+    if (isDiv(inputEl)) {
+      const fig = buildVid(id);
+      if (!fig) return;
+      edInsert(fig);
+      edInsert(document.createElement('br'));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+  function stripVidMarker(id) {
+    if (!inputEl) return;
+    if (isDiv(inputEl)) {
+      const fig = inputEl.querySelector('figure[data-vid="' + id + '"]');
+      if (fig) fig.remove();
+      const t = edValue(inputEl);
+      if (t.indexOf(vkOf(id)) >= 0) edSet(t.split(vkOf(id)).join(''));
+      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+  }
+  function hasVidMarker(id) {
+    if (!inputEl) return false;
+    if (isDiv(inputEl)) return !!inputEl.querySelector('figure[data-vid="' + id + '"]');
+    return String(inputEl.value || '').indexOf(vkOf(id)) >= 0;
+  }
   function stripMarker(id) {
     if (!inputEl) return;
     if (isDiv(inputEl)) {
@@ -443,7 +496,11 @@
 
   async function addImages(files) {
     touched = true;
+    // 影片先挑出來處理，其餘走圖片
+    const vids = [...files].filter(f => /^video\//.test(f.type));
+    if (vids.length) await addVideos(vids);
     for (const f of files) {
+      if (/^video\//.test(f.type)) continue;
       if (!/^image\//.test(f.type)) continue;
       try {
         const big = await imgFromFile(f, 1600, 0.82);
@@ -455,6 +512,67 @@
       } catch (e) { toast("圖片處理失敗"); }
     }
     if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+    paint();
+    if (window.__ppDiaryRerender) window.__ppDiaryRerender();
+  }
+
+  // 影片：存原檔到 IndexedDB，抓第一格當海報，內嵌在文字之間
+  function videoMeta(file) {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement('video');
+      v.preload = 'metadata'; v.muted = true; v.playsInline = true;
+      let done = false;
+      const finish = (poster) => {
+        if (done) return; done = true;
+        const dur = Math.round(v.duration || 0);
+        URL.revokeObjectURL(url);
+        resolve({ poster: poster || '', dur, ok: !!v.videoWidth || dur > 0 });
+      };
+      v.onloadedmetadata = () => {
+        try {
+          v.currentTime = Math.min(0.3, (v.duration || 1) / 2);
+          v.onseeked = () => {
+            try {
+              const w = 320, h = Math.max(1, Math.round(w * (v.videoHeight || 9) / (v.videoWidth || 16)));
+              const c = document.createElement('canvas'); c.width = w; c.height = h;
+              c.getContext('2d').drawImage(v, 0, 0, w, h);
+              finish(c.toDataURL('image/jpeg', 0.6));
+            } catch (e) { finish(''); }
+          };
+        } catch (e) { finish(''); }
+      };
+      v.onerror = () => finish('');
+      setTimeout(() => finish(''), 8000);
+      v.src = url;
+    });
+  }
+
+  async function addVideos(files) {
+    if (!Array.isArray(draft.videos)) draft.videos = [];
+    for (const f of files) {
+      try {
+        if (f.size > 300 * 1024 * 1024) { toast('影片超過 300MB，請先壓縮再上傳'); continue; }
+        const id = uid();
+        await putBlob(id, f);
+        // 先內嵌，不等解碼：手機上延遲才不會卡住
+        draft.videos.push({ id, name: f.name || '影片', dur: 0, poster: '', caption: '' });
+        insertVidMarker(id);
+        paint();
+        if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+        // 背景補長度與海報
+        videoMeta(f).then(meta => {
+          const vd = (draft.videos || []).find(x => x.id === id);
+          if (!vd) return;
+          vd.dur = meta.dur || 0;
+          vd.poster = meta.poster || '';
+          const fig = inputEl && inputEl.querySelector('figure[data-vid="' + id + '"]');
+          if (fig && meta.poster) { const v = fig.querySelector('video'); if (v) v.poster = meta.poster; }
+          paint();
+          if (window.__ppDiaryUpsert) window.__ppDiaryUpsert(liveText, draft);
+        }).catch(() => {});
+      } catch (e) { toast('影片處理失敗'); }
+    }
     paint();
     if (window.__ppDiaryRerender) window.__ppDiaryRerender();
   }
@@ -610,6 +728,7 @@
     const d = toolsEl.querySelector("#dtDraft");
     let h = "";
     if (draft.images.length) h += `<div class="dt-imgs">${draft.images.map(m => `<span class="dt-thumb${hasMarker(m.id) ? ' intext' : ''}"><img src="${m.thumb}"><b data-delimg="${m.id}">×</b></span>`).join("")}</div>`;
+    if ((draft.videos || []).length) h += `<div class="dt-imgs dt-vids">${draft.videos.map(v => `<span class="dt-thumb dt-vthumb${hasVidMarker(v.id) ? ' intext' : ''}">${v.poster ? `<img src="${v.poster}">` : '<i class="dt-vph">▶</i>'}<u class="dt-vdur">${v.dur ? Math.floor(v.dur / 60) + ':' + String(v.dur % 60).padStart(2, '0') : ''}</u><b data-delvid="${v.id}">×</b></span>`).join("")}</div>`;
     if (draft.audio) h += `<div class="dt-audio" data-dur="${draft.audio.dur || 0}"><span class="dt-alab">🔊 錄音</span><audio controls preload="metadata" data-preview-audio></audio><button type="button" data-delaudio="1">刪除</button></div>`;
     if (draft.sketch) h += `<div class="dt-sk">✏️ 手寫 1 張 <button type="button" data-delsketch="1">刪除</button></div>`;
     if (draft.rows.length) {
@@ -664,6 +783,7 @@
 
   function onClick(e) {
     const t = e.target;
+    if (t.dataset.delvid) { stripVidMarker(t.dataset.delvid); draft.videos = (draft.videos || []).filter(x => x.id !== t.dataset.delvid); delBlob(t.dataset.delvid); paint(); return; }
     if (t.dataset.delimg) { stripMarker(t.dataset.delimg); draft.images = draft.images.filter(x => x.id !== t.dataset.delimg); delBlob(t.dataset.delimg); paint(); return; }
     if (t.dataset.dtNext !== undefined && t.closest("[data-dt-next]")) {
       if (window.__ppDiaryFinish) window.__ppDiaryFinish();
@@ -720,6 +840,11 @@
   document.addEventListener('input', e => {
     const cap = e.target && e.target.closest ? e.target.closest('.ed-cap') : null;
     if (!cap) return;
+    if (cap.dataset.vcap) {
+      const vd = (draft.videos || []).find(x => x.id === cap.dataset.vcap);
+      if (vd) { vd.caption = cap.textContent.trim().slice(0, 120); scheduleSave(); }
+      return;
+    }
     const id = cap.dataset.cap;
     const im = (draft.images || []).find(x => x.id === id);
     if (im) { im.caption = cap.textContent.trim().slice(0, 120); scheduleSave(); }
@@ -833,6 +958,7 @@
     const d = draft || empty();
     const out = {};
     if (d.images.length) out.images = d.images.map(x => ({ id: x.id, thumb: x.thumb, w: x.w, h: x.h, caption: x.caption || '' }));
+    if ((d.videos || []).length) out.videos = d.videos.map(x => ({ id: x.id, name: x.name || '影片', dur: Number(x.dur) || 0, poster: x.poster || '', caption: x.caption || '' }));
     if (d.audio) out.audio = d.audio;
     if (d.sketch) out.sketch = d.sketch;
     if (d.bg && d.bg !== "none") out.bg = d.bg;
@@ -843,7 +969,7 @@
     paint();
     return out;
   }
-  const hasDraft = () => !!(draft && (draft.images.length || draft.audio || draft.sketch || (draft.rows && draft.rows.length)));
+  const hasDraft = () => !!(draft && (draft.images.length || (draft.videos || []).length || draft.audio || draft.sketch || (draft.rows && draft.rows.length)));
 
   let tt = null;
   function toast(msg) {

@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '70';
+const APP_VERSION = '71';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -786,28 +786,50 @@ document.addEventListener('click', function (e) {
 
 
 // ===== 圖文混合日記（B 方案）：唯一 ID 標記 + 圖文交錯閱讀模式（2026-10-30）=====
-const IMG_MARK_RE = /〔img:([A-Za-z0-9]+)〕/g;
+const IMG_MARK_RE = /〔(img|vid):([A-Za-z0-9]+)〕/g;
 
 function diaryMixedHtml(it) {
   const text = String(it.text || '');
   const imgs = Array.isArray(it.images) ? it.images : [];
+  const vids = Array.isArray(it.videos) ? it.videos : [];
   const byId = {};
   imgs.forEach(m => { byId[m.id] = m; });
+  const vById = {};
+  vids.forEach(m => { vById[m.id] = m; });
   const used = {};
   let out = '', last = 0, m;
   IMG_MARK_RE.lastIndex = 0;
   while ((m = IMG_MARK_RE.exec(text))) {
     const seg = text.slice(last, m.index).trim();
     if (seg) out += `<p>${escHtml(seg).replace(/\n/g, '<br>')}</p>`;
-    if (byId[m[1]]) { out += diaryFigHtml(byId[m[1]]); used[m[1]] = 1; }
+    if (m[1] === 'vid') {
+      if (vById[m[2]]) { out += diaryVidHtml(vById[m[2]]); used[m[2]] = 1; }
+    } else if (byId[m[2]]) { out += diaryFigHtml(byId[m[2]]); used[m[2]] = 1; }
     last = m.index + m[0].length;
   }
   const tail = text.slice(last).trim();
   if (tail) out += `<p>${escHtml(tail).replace(/\n/g, '<br>')}</p>`;
   const rest = imgs.filter(x => !used[x.id]);
   if (rest.length) out += rest.map(diaryFigHtml).join('');
+  const restV = vids.filter(x => !used[x.id]);
+  if (restV.length) out += restV.map(diaryVidHtml).join('');
   if (!out.trim()) out = '<p class="dm-empty">這一天還沒有內容</p>';
   return out;
+}
+
+function diaryVidHtml(v) {
+  const cap = String(v.caption || '').trim();
+  const dur = Number(v.dur) || 0;
+  return `<figure class="dm-fig dm-vfig" data-vid="${v.id}">
+    <video data-vmid="${v.id}" controls playsinline preload="metadata" poster="${v.poster || ''}"></video>
+    <figcaption class="dm-cap${cap ? '' : ' empty'}" data-vcap="${v.id}">${cap ? escHtml(cap) : '加一句說明…'}</figcaption>
+    <div class="dm-tools">
+      <button type="button" data-mv="up" data-id="${v.id}" data-kind="vid" aria-label="上移">↑</button>
+      <button type="button" data-mv="down" data-id="${v.id}" data-kind="vid" aria-label="下移">↓</button>
+      <button type="button" data-vcapedit="${v.id}">說明</button>
+      <button type="button" data-viddel="${v.id}">刪除</button>
+    </div>
+  </figure>`;
 }
 
 function diaryFigHtml(m) {
@@ -846,19 +868,25 @@ function openDiaryRead(itemId) {
       if (!t.closest) return;
       const btn = t.closest('button');
       if (btn) {
-        const id = btn.dataset.id || btn.dataset.capedit || btn.dataset.replace || btn.dataset.imgdel;
+        const id = btn.dataset.id || btn.dataset.capedit || btn.dataset.replace || btn.dataset.imgdel || btn.dataset.vcapedit || btn.dataset.viddel;
         const cur = getItems('diary').find(x => x.id === body.dataset.item);
         if (!cur) return;
-        if (btn.dataset.mv) { moveDiaryMarker(cur, id, btn.dataset.mv === 'up' ? -1 : 1); return; }
+        const kind = btn.dataset.kind === 'vid' ? 'vid' : 'img';
+        if (btn.dataset.mv) { moveDiaryMarker(cur, id, btn.dataset.mv === 'up' ? -1 : 1, kind); return; }
         if (btn.dataset.capedit) { editDiaryCaption(cur, id); return; }
+        if (btn.dataset.vcapedit) { editDiaryCaption(cur, id, 'vid'); return; }
         if (btn.dataset.replace) { replaceDiaryImage(cur, id); return; }
         if (btn.dataset.imgdel) { deleteDiaryImage(cur, id); return; }
+        if (btn.dataset.viddel) { deleteDiaryVideo(cur, id); return; }
         return;
       }
       const capEl = t.closest('.dm-cap');
       if (capEl && capEl.dataset.cap) {
         const cur = getItems('diary').find(x => x.id === body.dataset.item);
         if (cur) editDiaryCaption(cur, capEl.dataset.cap);
+      } else if (capEl && capEl.dataset.vcap) {
+        const cur = getItems('diary').find(x => x.id === body.dataset.item);
+        if (cur) editDiaryCaption(cur, capEl.dataset.vcap, 'vid');
       }
     });
   }
@@ -880,6 +908,11 @@ function renderDiaryRead(it) {
     if (!window.__ppDiaryBlob) return;
     window.__ppDiaryBlob.get(id).then(b => { if (b) img.src = URL.createObjectURL(b); });
   });
+  body.querySelectorAll('video[data-vmid]').forEach(v => {
+    const id = v.dataset.vmid;
+    if (!window.__ppDiaryBlob) return;
+    window.__ppDiaryBlob.get(id).then(b => { if (b) v.src = URL.createObjectURL(b); });
+  });
 }
 
 function saveDiaryItem(it) {
@@ -890,8 +923,8 @@ function saveDiaryItem(it) {
   if (window.__ppDiaryRerender) window.__ppDiaryRerender();
 }
 
-function moveDiaryMarker(it, id, dir) {
-  const mk = '〔img:' + id + '〕';
+function moveDiaryMarker(it, id, dir, kind) {
+  const mk = (kind === 'vid' ? '〔vid:' : '〔img:') + id + '〕';
   let t = String(it.text || '');
   const at = t.indexOf(mk);
   if (at < 0) { tipToast('這張圖不在文中（會排在最後）'); return; }
@@ -914,8 +947,9 @@ function moveDiaryMarker(it, id, dir) {
   tipToast('已調整位置');
 }
 
-function editDiaryCaption(it, id) {
-  const im = (it.images || []).find(x => x.id === id);
+function editDiaryCaption(it, id, kind) {
+  const list = kind === 'vid' ? (it.videos || []) : (it.images || []);
+  const im = list.find(x => x.id === id);
   if (!im) return;
   const v = window.prompt('圖片說明（留空可清除）', im.caption || '');
   if (v === null) return;
@@ -931,6 +965,15 @@ function deleteDiaryImage(it, id) {
   saveDiaryItem(it);
   renderDiaryRead(it);
   tipToast('已刪除');
+}
+
+function deleteDiaryVideo(it, id) {
+  if (!window.confirm('刪除這段影片？')) return;
+  it.text = String(it.text || '').split('〔vid:' + id + '〕').join('');
+  it.videos = (it.videos || []).filter(x => x.id !== id);
+  saveDiaryItem(it);
+  renderDiaryRead(it);
+  tipToast('已刪除影片');
 }
 
 function replaceDiaryImage(it, id) {
@@ -1108,13 +1151,14 @@ async function diaryAIAsk(q) {
 
 // 日記列表只顯示摘要（前賢 2026-10-30：不用全顯示）
 function stripDiaryMarks(text) {
-  return String(text || '').replace(/〔img:[A-Za-z0-9]+〕/g, '');
+  return String(text || '').replace(/〔(?:img|vid):[A-Za-z0-9]+〕/g, '');
 }
 
 function diarySummary(text, it) {
   const t = stripDiaryMarks(text).replace(/\s+/g, ' ').trim();
   const media = [];
   if ((it && (it.images || []).length)) media.push('照片' + it.images.length);
+  if ((it && (it.videos || []).length)) media.push('影片' + it.videos.length);
   if (it && it.audio) media.push('錄音');
   if (it && it.sketch) media.push('手寫');
   let s = t.length > 60 ? t.slice(0, 60) + '…' : t;
@@ -1171,6 +1215,7 @@ function diaryCardHtml(it) {
   const nImg = (it.images || []).length;
   const tags = [];
   if (nImg) tags.push('📷' + nImg);
+  if ((it.videos || []).length) tags.push('🎬' + it.videos.length);
   if (it.audio) tags.push('🎙');
   if (it.sketch) tags.push('✍️');
   if ((it.rows || []).length) tags.push('🧾');
@@ -1346,6 +1391,7 @@ window.__ppDiaryUpsert = function (text, extras) {
     if (diaryMood) it.mood = diaryMood; else delete it.mood;
     if (extras) {
       it.images = extras.images || [];
+      it.videos = extras.videos || [];
       it.audio = extras.audio || null;
       it.sketch = extras.sketch || null;
       it.rows = extras.rows || [];
