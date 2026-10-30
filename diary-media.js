@@ -76,9 +76,9 @@
 .dt-aa{font-size:.95rem;font-weight:600;letter-spacing:.5px}
 .dt-btn.rec{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;font-weight:600}
 .dt-draft{font-size:.8rem;color:var(--text2)}
-.dt-imgs{display:flex;gap:6px;overflow-x:auto;padding:6px 0}
+.dt-imgs{display:flex;gap:9px;overflow-x:auto;padding:8px 0}
 .dt-thumb{position:relative;flex:0 0 auto}
-.dt-thumb img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+.dt-thumb img{width:108px;height:108px;object-fit:cover;border-radius:12px;border:1px solid var(--border)}
 .dt-thumb b{position:absolute;top:-6px;right:-6px;background:#3d2c1e;color:#fff;width:18px;height:18px;border-radius:50%;
   display:grid;place-items:center;font-size:11px;cursor:pointer}
 .dt-audio{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:6px 0;width:100%}
@@ -242,7 +242,7 @@
     const ta = document.querySelector("#addText") || inputEl;
     if (!ta) return;
     // 輸入框至少佔畫面 1/3（扣掉工具列高度），內容更多才繼續長高
-    const minH = Math.max(150, Math.round(window.innerHeight / 3) - 52);
+    const minH = Math.max(285, Math.round(window.innerHeight / 2.4) - 60);
     ta.style.height = "auto";
     ta.style.height = Math.max(minH, Math.min(640, ta.scrollHeight)) + "px";
   }

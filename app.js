@@ -27,7 +27,9 @@ const ICON_PATHS = {
   temple: '<path d="M12 3.2 3.2 8.2h17.6L12 3.2Z"/><path d="M6.4 8.2V20M17.6 8.2V20M10 20.4v-5.6h4v5.6"/><path d="M3.6 20.4h16.8"/>',
   utensils: '<path d="M7 3.2v7.4c0 1.2.9 2.2 2 2.2v8"/><path d="M7 3.2v5.4M11 3.2v5.4"/><path d="M16.6 3.2c1.6 0 2.6 2 2.6 5.4 0 2.4-1 3.6-2.6 3.9v8.1"/>',
   edit: '<path d="M4.2 19.8h4L19 9l-4-4L4.2 15.8v4Z"/><path d="m13.6 6.4 4 4"/>',
-  trash: '<path d="M4.2 7h15.6"/><path d="M9.4 7V4.2h5.2V7"/><path d="M6.2 7 7.2 20.4h9.6L17.8 7"/>'
+  trash: '<path d="M4.2 7h15.6"/><path d="M9.4 7V4.2h5.2V7"/><path d="M6.2 7 7.2 20.4h9.6L17.8 7"/>',
+  mic: '<rect x="9" y="3" width="6" height="10" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v3"/>',
+  share: '<path d="M12 15.5V4"/><path d="m8 7.8 4-3.8 4 3.8"/><path d="M5 13.5V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5.5"/>'
 };
 const CAT_ICON = { todo: 'check', diary: 'calendar', expense: 'money', idea: 'bulb', habits: 'chart' };
 
@@ -46,7 +48,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '62';
+const APP_VERSION = '64';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -68,7 +70,7 @@ let newQuad = 1;
 let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
 let diaryFresh = false;  // 進入日記頁一律從空白開始（前賢 2026-10-30 要求）
 let diaryMood = '';      // 日記心情（奶油日常，2026-10-30）
-const DIARY_MOODS = ['平靜', '溫暖', '有點累', '踏實', '感恩'];
+const DIARY_MOODS = ['喜', '怒', '哀', '樂', '平靜'];
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
@@ -704,6 +706,61 @@ document.addEventListener('click', function (e) {
   if (!li) return;
   if (isAction) return;
   li.classList.toggle('acting');
+});
+
+// 輕量提示（不帶復原按鈕）
+let tipTimer = null;
+function tipToast(msg) {
+  let el = document.getElementById('undoToast');
+  if (!el) { el = document.createElement('div'); el.id = 'undoToast'; el.className = 'undo-toast'; document.body.appendChild(el); }
+  el.innerHTML = `<span>${escHtml(msg)}</span>`;
+  el.classList.add('on');
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => el.classList.remove('on'), 2200);
+}
+
+// 語音優先：直接觸發日記工具列既有的「聽寫」
+document.addEventListener('click', function (e) {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest('#dcVoiceBtn')) {
+    const dictBtn = document.querySelector('.dt-btn[data-dt="dict"]');
+    if (dictBtn) { dictBtn.click(); }
+    else { tipToast('這台裝置的瀏覽器不支援語音輸入'); }
+    return;
+  }
+  const sh = t.closest('.share-btn');
+  if (sh) {
+    const it = getItems('diary').find(x => x.id === sh.dataset.id);
+    if (!it) return;
+    const title = '拾光日記 · ' + String(it.date || '').trim();
+    const body = String(it.text || '').trim() || '（這一天的日記）';
+    const payload = title + '\n\n' + body;
+    const legacyCopy = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = payload; ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(ta);
+        ta.select(); ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand('copy');
+        ta.remove();
+        tipToast(ok ? '已複製，可以貼到 LINE 了' : '複製失敗，請長按內文複製');
+      } catch (e) { tipToast('複製失敗，請長按內文複製'); }
+    };
+    const copyIt = () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload).then(() => tipToast('已複製，可以貼到 LINE 了')).catch(legacyCopy);
+      } else {
+        legacyCopy();
+      }
+    };
+    if (navigator.share) {
+      navigator.share({ title, text: payload }).catch(copyIt);   // 分享取消或不支援 → 退回複製
+    } else {
+      copyIt();
+    }
+  }
 });
 
 // ===== 奶油日常（方案 C）：日記頁統計、心情、AI 回顧（2026-10-30）=====
@@ -1660,6 +1717,7 @@ function renderMain() {
            <button type="button" class="dc-ai-btn" id="diaryAiBtn">${ico('bulb', 14)} AI 回顧</button>
          </div>
          <div class="dc-moods" id="dcMoods">${DIARY_MOODS.map(m => `<button type="button" class="dc-mood" data-mood="${m}">${m}</button>`).join('')}</div>
+         <button type="button" class="dc-voice" id="dcVoiceBtn">${ico('mic', 18)} 語音記錄：說一段，轉成日記</button>
          <div class="add-row">
            <div class="diary-box">
              <textarea id="addText" rows="2" placeholder="寫下今天…"></textarea>
@@ -1885,6 +1943,7 @@ function renderItem(cat, it) {
         <span class="diary-summary">${escHtml(diarySummary(stripDiaryDate(it.text), it))}</span>
       </span>
       <span class="diary-date-out">${it.date||''}</span>
+      <button class="share-btn" data-id="${it.id}" aria-label="分享">${ico('share', 16)}</button>
       <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
       <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
     </li>`;
