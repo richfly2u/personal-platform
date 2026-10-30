@@ -1751,3 +1751,49 @@ input:focus, textarea:focus, select:focus {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* === 內嵌 SVG 圖示（不依賴 emoji 字型）=== */
+.ico { display: inline-block; vertical-align: -3px; flex: none; }
+#nav .nav-btn .nvi { display: flex; align-items: center; justify-content: center; }
+#nav .nav-btn .nvi svg { width: 21px; height: 21px; vertical-align: 0; }
+#nav .nav-btn.add-cat-btn .nvi svg { width: 21px; height: 21px; }
+.home-card-title .ico { vertical-align: -3px; margin-right: 4px; }
+.home-top h2 .ico { vertical-align: -4px; margin-right: 4px; }
+.home-link .ico, .home-search .ico { margin-right: 3px; vertical-align: -2px; }
+.home-sec-title .ico { margin-right: 4px; vertical-align: -2px; }
+.edit-btn .ico, .del-btn .ico { vertical-align: -3px; display: block; }
+.global-result-icon .ico { vertical-align: -3px; }
+
+/* 日記：新增按鈕（輸入框外右下角）與列表摘要 */
+.diary-act-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+#diaryAddBtn {
+  flex: 0 0 auto;
+  padding: 9px 26px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+#diaryAddBtn:active { filter: brightness(.94); }
+li.diary-li .diary-summary {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+/* === 桌面版（≥900px）：首頁兩欄，不再是一條細長條 === */
+@media (min-width: 900px) {
+  body { max-width: 1040px; }
+  main { padding: 0 24px; }
+  .home-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .home-card-expense { grid-column: 1 / -1; }
+  .home-links { flex-wrap: wrap; }
+  #nav { padding-left: 24px; padding-right: 24px; }
+  #nav .nav-btn { max-width: 160px; }
+}

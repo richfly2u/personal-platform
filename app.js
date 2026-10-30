@@ -10,9 +10,43 @@ const BUILTIN_CATEGORIES = [
   {id: 'idea',    name: '靈感',     icon: '💡'}
 ];
 
+// === 內嵌 SVG 圖示（不用 emoji，避免部分環境沒有 emoji 字型顯示成 □）===
+const ICON_PATHS = {
+  home: '<path d="M3 10.6 12 3.2l9 7.4"/><path d="M5.6 9.6V20h12.8V9.6"/>',
+  check: '<polyline points="20 6.5 9.2 17 4 11.8"/>',
+  calendar: '<rect x="3.4" y="5.2" width="17.2" height="15.2" rx="2.6"/><path d="M8 3v4.2M16 3v4.2M3.4 10.2h17.2"/>',
+  money: '<rect x="2.6" y="6.4" width="18.8" height="11.2" rx="2.6"/><circle cx="12" cy="12" r="2.6"/><path d="M6 12h.01M18 12h.01"/>',
+  bulb: '<path d="M9.4 18.2h5.2"/><path d="M10.4 21h3.2"/><path d="M12 3a5.9 5.9 0 0 0-3.5 10.6c.5.4.8.9.9 1.5l.1.5h5l.1-.5c.1-.6.4-1.1.9-1.5A5.9 5.9 0 0 0 12 3Z"/>',
+  chart: '<path d="M4 20.5V10M10 20.5V4M16 20.5v-7M22 20.5H2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m16.4 16.4 4.6 4.6"/>',
+  download: '<path d="M12 3.5v11.5"/><path d="m7.2 11 4.8 4.8 4.8-4.8"/><path d="M4.2 20.2h15.6"/>',
+  upload: '<path d="M12 20.2V8.6"/><path d="m7.2 12 4.8-4.8L16.8 12"/><path d="M4.2 4.2h15.6"/>',
+  bento: '<rect x="3" y="6.2" width="18" height="13" rx="2.6"/><path d="M9.2 6.2v13M14.8 6.2v13"/>',
+  building: '<path d="M5 21V6.4L12 3.2l7 3.2V21"/><path d="M9.4 21v-5.2h5.2V21"/><path d="M9.2 9.4h.01M14.8 9.4h.01M9.2 12.8h.01M14.8 12.8h.01"/>',
+  temple: '<path d="M12 3.2 3.2 8.2h17.6L12 3.2Z"/><path d="M6.4 8.2V20M17.6 8.2V20M10 20.4v-5.6h4v5.6"/><path d="M3.6 20.4h16.8"/>',
+  utensils: '<path d="M7 3.2v7.4c0 1.2.9 2.2 2 2.2v8"/><path d="M7 3.2v5.4M11 3.2v5.4"/><path d="M16.6 3.2c1.6 0 2.6 2 2.6 5.4 0 2.4-1 3.6-2.6 3.9v8.1"/>',
+  edit: '<path d="M4.2 19.8h4L19 9l-4-4L4.2 15.8v4Z"/><path d="m13.6 6.4 4 4"/>',
+  trash: '<path d="M4.2 7h15.6"/><path d="M9.4 7V4.2h5.2V7"/><path d="M6.2 7 7.2 20.4h9.6L17.8 7"/>'
+};
+const CAT_ICON = { todo: 'check', diary: 'calendar', expense: 'money', idea: 'bulb', habits: 'chart' };
+
+function ico(name, size) {
+  const p = ICON_PATHS[name];
+  if (!p) return '';
+  const s = size || 18;
+  return `<svg class="ico" viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+}
+// 分類圖示：內建分類走 SVG；自訂分類沿用使用者選的 emoji
+function catIcon(cat, size) {
+  const key = cat && CAT_ICON[cat.id];
+  if (key) return ico(key, size);
+  return `<span class="ico-emoji">${escHtml((cat && cat.icon) || '•')}</span>`;
+}
+
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '56';
+const APP_VERSION = '59';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -32,6 +66,7 @@ let currentTab = 'todo';
 let editingId = null;  // 目前正在編輯的項目 id
 let newQuad = 1;
 let diaryCurId = null;   // 目前正在寫的日記（隨寫隨存，不用按新增）        // 新增待辦時選的四象限（1 重要且緊急 … 4 不重要不緊急）
+let diaryFresh = false;  // 進入日記頁一律從空白開始（前賢 2026-10-30 要求）
 let expenseView = { year: null, month: null };  // 收支檢視月份（null=本月）
 let dashboardOpen = false;  // 養成好習慣 iframe 是否開啟
 let homeOpen = true;  // 首頁（整合五項目摘要）是否顯示
@@ -96,6 +131,7 @@ function restoreNav() {
       if (currentTab !== 'habits' && !appData.categories.some(c => c.id === currentTab)) currentTab = (appData.categories[0] || {}).id || 'todo';
       homeOpen = !!s.homeOpen;
       dashboardOpen = !!s.dashboardOpen;
+      if (currentTab === 'diary') diaryFresh = true;   // 重開 App 停在日記頁也是空白開始
     }
   } catch(e) {}
 }
@@ -642,6 +678,32 @@ function hideUndo() {
   undoState = null;
 }
 
+// 日記「新增」按鈕（輸入框外右下角）：先把目前內容存好，再收筆開新的一則
+window.__ppDiaryCommit = function () {
+  try {
+    const ta = document.querySelector('.diary-box textarea');
+    const txt = ta ? ta.value : '';
+    if (String(txt || '').trim() && window.__ppDiaryUpsert) window.__ppDiaryUpsert(txt, null);
+  } catch (e) {}
+  if (window.__ppDiaryFinish) window.__ppDiaryFinish();
+};
+document.addEventListener('click', function (e) {
+  const btn = e.target && e.target.closest ? e.target.closest('#diaryAddBtn') : null;
+  if (btn) { e.preventDefault(); window.__ppDiaryCommit(); }
+});
+
+// 日記列表只顯示摘要（前賢 2026-10-30：不用全顯示）
+function diarySummary(text, it) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  const media = [];
+  if ((it && (it.images || []).length)) media.push('照片' + it.images.length);
+  if (it && it.audio) media.push('錄音');
+  if (it && it.sketch) media.push('手寫');
+  let s = t.length > 60 ? t.slice(0, 60) + '…' : t;
+  if (media.length) s = (s ? s + ' ' : '') + '（' + media.join('・') + '）';
+  return s || '（空白）';
+}
+
 // 日記「寫完了，換下一則」：收好這一筆，清空輸入框開新的一筆
 window.__ppDiaryFinish = function () {
   try {
@@ -1082,36 +1144,36 @@ function renderHome() {
   main.innerHTML = `
     <section class="tab-content active">
       <div class="home-top">
-        <h2>🏠 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v${APP_VERSION}</small></h2>
-        <button class="home-search utility-link" type="button" onclick="openGlobalSearch()" title="搜尋">🔎 搜尋</button>
+        <h2>${ico('home', 20)} 榮哥動起來 <small style="font-size:.65rem;color:var(--text2);font-weight:400">v${APP_VERSION}</small></h2>
+        <button class="home-search utility-link" type="button" onclick="openGlobalSearch()" title="搜尋">${ico('search', 14)} 搜尋</button>
       </div>
       <div class="home-links">
-          <button class="home-link utility-link" type="button" onclick="exportBackup()">⬇ 備份</button>
-          <button class="home-link utility-link" type="button" onclick="importBackup()">↥ 還原</button>
-          <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">🍱便當組合</a>
-          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🏢凱鴻</a>
-          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">🛕凱德</a>
+          <button class="home-link utility-link" type="button" onclick="exportBackup()">${ico('download', 14)} 備份</button>
+          <button class="home-link utility-link" type="button" onclick="importBackup()">${ico('upload', 14)} 還原</button>
+          <a class="home-link" href="https://kindhome.net/bentotable/" target="_blank" rel="noopener">${ico('bento', 14)} 便當組合</a>
+          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">${ico('building', 14)} 凱鴻</a>
+          <a class="home-link" href="https://kindhome.herokuapp.com/" target="_blank" rel="noopener">${ico('temple', 14)} 凱德</a>
       </div>
       <div class="home-grid">
         <div class="home-card home-card-expense" onclick="goTab('expense')">
-          <div class="home-card-title"><span>💰 ${vMonth}月收支</span><span class="home-today">今日日期 ${vMonth}月${now.getDate()}日</span></div>
+          <div class="home-card-title"><span>${ico('money', 17)} ${vMonth}月收支</span><span class="home-today">今日日期 ${vMonth}月${now.getDate()}日</span></div>
           <div class="home-sum-row">
             <div class="home-sum"><span class="home-sum-label">收入</span><b>NT$${incTotal.toLocaleString()}</b></div>
             <div class="home-sum"><span class="home-sum-label">支出</span><b>NT$${expTotal.toLocaleString()}</b></div>
             <div class="home-sum"><span class="home-sum-label">結餘</span><b class="${balance >= 0 ? 'home-pos' : 'home-neg'}">${balance < 0 ? '-' : ''}NT$${Math.abs(balance).toLocaleString()}</b></div>
           </div>
-          <div class="home-sec-title">🍽️ 食衣住行比例</div>
+          <div class="home-sec-title">${ico('utensils', 14)} 食衣住行比例</div>
           ${renderPieChart(catSum)}
         </div>
         <div class="home-card" onclick="goTab('todo')">
-          <div class="home-card-title">✓ 待辦</div>
+          <div class="home-card-title">${ico('check', 17)} 待辦</div>
           ${topTodos.length
             ? topTodos.map(t => `<div class="home-line"><span class="todo-marker">▸</span>${escHtml((t.text || '').slice(0, 16))}</div>`).join('')
               + (pendingTodos.length > 3 ? `<div class="home-line home-line-more">另有 ${pendingTodos.length - 3} 筆未完成</div>` : '')
-            : '<div class="home-line">全部完成 🎉</div>'}
+            : '<div class="home-line">全部完成</div>'}
         </div>
         <div class="home-card" onclick="goTab('diary')">
-          <div class="home-card-title">📅 日記</div>
+          <div class="home-card-title">${ico('calendar', 17)} 日記</div>
           ${topDiaries.length
             ? topDiaries.map(d => {
                 const day = String(d.date || '').split(' ')[0];   // 只取日期，不顯示時間
@@ -1120,11 +1182,11 @@ function renderHome() {
             : '<div class="home-line">尚無日記</div>'}
         </div>
         <div class="home-card" onclick="goTab('idea')">
-          <div class="home-card-title">💡 靈感</div>
+          <div class="home-card-title">${ico('bulb', 17)} 靈感</div>
           <div class="home-line">${lastIdea ? escHtml((lastIdea.text || '').slice(0, 14)) : '尚無靈感'}</div>
         </div>
         <div class="home-card" onclick="goTab('habits')">
-          <div class="home-card-title">📊 習慣</div>
+          <div class="home-card-title">${ico('chart', 17)} 習慣</div>
           <div id="habitStats">${homeHabitHtml()}</div>
         </div>
       </div>
@@ -1134,6 +1196,8 @@ function renderHome() {
 
 // 首頁點卡片 → 跳到對應分類
 function goTab(tabId) {
+  // 切換到日記頁 → 一律從空白的一則開始（上一則已在隨寫隨存時存好）
+  if (tabId === 'diary' && (currentTab !== 'diary' || homeOpen)) diaryFresh = true;
   homeOpen = false;
   hideDashboard();
   currentTab = tabId;
@@ -1158,14 +1222,14 @@ function goDashboard() {
 function renderNav() {
   const nav = document.getElementById('nav');
   nav.innerHTML =
-    `<button class="nav-btn home-btn ${homeOpen?'active':''}" id="homeBtn" title="回首頁"><span class="nvi">🏠</span><span class="nvl">首頁</span></button>` +
+    `<button class="nav-btn home-btn ${homeOpen?'active':''}" id="homeBtn" title="回首頁" aria-label="首頁"><span class="nvi">${ico('home', 21)}</span><span class="nvl">首頁</span></button>` +
     appData.categories.map(c => `
-    <button class="nav-btn ${(c.id===currentTab && !dashboardOpen && !homeOpen)?'active':''}" data-tab="${c.id}">
-      <span class="nvi">${c.icon}</span><span class="nvl">${c.name.replace('事項','')}</span>
+    <button class="nav-btn ${(c.id===currentTab && !dashboardOpen && !homeOpen)?'active':''}" data-tab="${c.id}" aria-label="${escHtml(c.name)}">
+      <span class="nvi">${catIcon(c, 21)}</span><span class="nvl">${c.name.replace('事項','')}</span>
     </button>
   `).join('') + `
-    <button class="nav-btn add-cat-btn" title="新增類別"><span class="nvi">＋</span><span class="nvl">更多</span></button>
-    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡"><span class="nvi">📊</span><span class="nvl">習慣</span></button>`;
+    <button class="nav-btn add-cat-btn" title="新增類別" aria-label="新增類別"><span class="nvi">${ico('plus', 21)}</span><span class="nvl">更多</span></button>
+    <button class="nav-btn fresh-btn ${(currentTab==='habits' && !dashboardOpen && !homeOpen)?'active':''}" id="dashBtn" data-tab="habits" title="習慣打卡" aria-label="習慣"><span class="nvi">${ico('chart', 21)}</span><span class="nvl">習慣</span></button>`;
 
   const homeBtn = document.getElementById('homeBtn');
   if (homeBtn) homeBtn.addEventListener('click', goHome);
@@ -1440,6 +1504,7 @@ function renderMain() {
              <div id="diaryTools"></div>
            </div>
          </div>
+         <div class="diary-act-row"><button type="button" id="diaryAddBtn" aria-label="新增日記">新增</button></div>
        </div>`
     : cat.id === 'todo'
     ? `<div class="add-form">
@@ -1462,7 +1527,7 @@ function renderMain() {
 
   main.innerHTML = `
     <section class="tab-content active">
-      <h2>${cat.icon} ${cat.name}</h2>
+      <h2>${catIcon(cat, 20)} ${cat.name}</h2>
       ${addForm}
       ${pendingHtml}
       ${summaryHtml}
@@ -1477,6 +1542,13 @@ function renderMain() {
   if (cat.id === 'diary' && window.DiaryUI) {
     const af = main.querySelector('.add-form');
     if (af) window.DiaryUI.mount(af, 'diary');
+    if (diaryFresh) {
+      // 進日記頁 = 空白日記開始：收掉上一筆的暫存（內容本身已存進清單，不會遺失）
+      diaryFresh = false;
+      diaryCurId = null;
+      try { localStorage.removeItem('diary.currentId'); } catch (e) {}
+      if (window.DiaryUI && window.DiaryUI.clearDraft) window.DiaryUI.clearDraft();
+    }
     if (!diaryCurId) { try { diaryCurId = localStorage.getItem('diary.currentId') || null; } catch (e) {} }
     const cur = diaryCurId ? getItems('diary').find(x => x.id === diaryCurId) : null;
     if (cur && window.DiaryUI.loadEntry) window.DiaryUI.loadEntry(cur);
@@ -1623,8 +1695,8 @@ function renderItem(cat, it) {
         <span class="cat-badge cat-${c === '收入' ? 'income' : c}">${c}</span>
         <span style="font-weight:600;color:${isIncome ? 'var(--success)' : 'var(--danger)'}">${isIncome ? '+' : '-'}NT$${it.amount||0}</span>
         <span style="font-size:0.7rem;color:var(--text2)">${it.date||''}</span>
-        <button class="edit-btn" data-id="${it.id}">✏️</button>
-        <button class="del-btn" data-id="${it.id}">🗑</button>
+        <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
+        <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
         ${itemsHtml}
       </li>`;
   }
@@ -1637,20 +1709,19 @@ function renderItem(cat, it) {
         ${it.due ? `<span class="due-chip" title="截止日">截止 ${escHtml(it.due)}</span>` : ''}
         <button class="q-badge q${q}" data-id="${it.id}" title="優先級：1 重要且緊急 / 2 重要不緊急 / 3 緊急不重要 / 4 不重要不緊急（點一下切換）">${q}</button>
         <span class="todo-date" title="建立日期">${it.date||''}</span>
-        <button class="edit-btn" data-id="${it.id}">✏️</button>
-        <button class="del-btn" data-id="${it.id}">🗑</button>
+        <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
+        <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
       </li>`;
   }
   if (cat.id === 'diary' && window.DiaryUI) {
     return `
     <li class="diary-li" data-id="${it.id}" data-diary-bg="${it.bg || ''}" style="${window.DiaryUI.bgStyle(it)}">
-      <span style="flex:1;${window.DiaryUI.sizeStyle(it)}">
-        ${window.DiaryUI.lineHtml(stripDiaryDate(it.text))}
-        ${window.DiaryUI.extras(it)}
+      <span style="flex:1;min-width:0">
+        <span class="diary-summary">${escHtml(diarySummary(stripDiaryDate(it.text), it))}</span>
       </span>
       <span class="diary-date-out">${it.date||''}</span>
-      <button class="edit-btn" data-id="${it.id}">✏️</button>
-      <button class="del-btn" data-id="${it.id}">🗑</button>
+      <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
+      <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
     </li>`;
   }
   return `
@@ -1659,8 +1730,8 @@ function renderItem(cat, it) {
         ${escHtml(it.text)}
         <span class="meta">${it.date||''}</span>
       </span>
-      <button class="edit-btn" data-id="${it.id}">✏️</button>
-      <button class="del-btn" data-id="${it.id}">🗑</button>
+      <button class="edit-btn" data-id="${it.id}" aria-label="編輯">${ico('edit', 16)}</button>
+      <button class="del-btn" data-id="${it.id}" aria-label="刪除">${ico('trash', 16)}</button>
     </li>`;
 }
 
@@ -1752,7 +1823,7 @@ function renderGlobalSearchResults(query) {
   if (!found.length) { target.innerHTML = '<p class="utility-hint">找不到符合的紀錄，試試其他關鍵字。</p>'; return; }
   target.innerHTML = `<p class="utility-result-count">找到 ${found.length} 筆紀錄</p>` + found.slice(0,80).map(({cat,item}, i) =>
     `<button type="button" class="global-result" data-search-cat="${escHtml(cat.id)}" data-search-id="${escHtml(String(item.id))}">
-      <span class="global-result-icon">${escHtml(cat.icon || '•')}</span><span class="global-result-body"><b>${escHtml(cat.name)}</b><span>${escHtml(String(item.text || item.store || '（無文字）').slice(0,140))}</span><small>${escHtml(String(item.date || ''))}${item.amount != null ? ` · NT$${Number(item.amount).toLocaleString()}` : ''}</small></span><span class="global-result-arrow">›</span>
+      <span class="global-result-icon">${catIcon(cat, 18)}</span><span class="global-result-body"><b>${escHtml(cat.name)}</b><span>${escHtml(String(item.text || item.store || '（無文字）').slice(0,140))}</span><small>${escHtml(String(item.date || ''))}${item.amount != null ? ` · NT$${Number(item.amount).toLocaleString()}` : ''}</small></span><span class="global-result-arrow">›</span>
     </button>`).join('') + (found.length > 80 ? '<p class="utility-hint">僅顯示前 80 筆，請增加關鍵字縮小範圍。</p>' : '');
   target.querySelectorAll('.global-result').forEach(btn => btn.addEventListener('click', () => {
     const catId = btn.dataset.searchCat, itemId = btn.dataset.searchId;
