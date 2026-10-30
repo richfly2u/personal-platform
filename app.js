@@ -49,7 +49,7 @@ function catIcon(cat, size) {
 
 // === 自動更新偵測（v18：不再自動重載，避免抖動迴圈）===
 // 舊版（v16 之前）看到 version.txt 空值也會停止重載 → 一舉停止所有迴圈
-const APP_VERSION = '79';
+const APP_VERSION = '80';
 const MONTHLY_INCOME = 38000;  // 每月固定收入（內定）
 const MONTHLY_HOUSING = 8000;  // 每月固定住房支出（內定）
 fetch('version.txt?v=' + Date.now())
@@ -1319,9 +1319,9 @@ function diaryDayCardHtml(list) {
 
 function diarySearchHtml() {
   const q = escHtml(diaryQuery).replace(/"/g, '&quot;');
-  return `<div class="dsearch-wrap${(diarySearchOpen || diaryQuery) ? ' open' : ''}" id="dsearchWrap">
-    <button type="button" class="dsearch-toggle" id="dsearchToggle" aria-label="搜尋日記">${ico('search', 18)}</button>
+  return `<div class="dsearch-wrap open" id="dsearchWrap">
     <input id="diarySearch" type="search" placeholder="搜尋日記" value="${q}" autocomplete="off" enterkeyhint="search" aria-label="搜尋日記">
+    <button type="button" class="dsearch-toggle" id="dsearchToggle" aria-label="搜尋日記">${ico('search', 18)}</button>
   </div>`;
 }
 
@@ -1408,11 +1408,16 @@ document.addEventListener('click', function (e) {
   if (!t || !t.closest) return;
   const tg = t.closest('#dsearchToggle');
   if (tg) {
-    const wrap = document.getElementById('dsearchWrap');
     const inp = document.getElementById('diarySearch');
-    if (wrap) wrap.classList.add('open');
-    diarySearchOpen = true;
-    if (inp) { inp.focus(); if (inp.value) inp.select(); }
+    if (inp && String(inp.value || '').trim()) {
+      diaryQuery = inp.value;
+      diaryRefreshCards();
+      setTimeout(diaryJumpToResults, 40);
+      try { inp.blur(); } catch (err) {}
+    } else if (inp) {
+      diarySearchOpen = true;
+      inp.focus();
+    }
   }
 });
 document.addEventListener('focusout', function (e) {
@@ -1424,8 +1429,34 @@ document.addEventListener('focusout', function (e) {
     if (wrap) wrap.classList.remove('open');
   }
 });
+// 搜尋結果定位：把結果（或「找不到」）直接帶到畫面頂端
+function diaryJumpToResults() {
+  try {
+    const box = document.getElementById('diaryCards');
+    if (!box) return;
+    const html = document.documentElement;
+    const prev = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'auto';
+    const y = box.getBoundingClientRect().top + window.scrollY - 8;
+    window.scrollTo(0, Math.max(0, y));
+    html.style.scrollBehavior = prev;
+  } catch (e) {}
+}
 document.addEventListener('input', function (e) {
-  if (e.target && e.target.id === 'diarySearch') { diaryQuery = e.target.value; diaryRefreshCards(); }
+  if (e.target && e.target.id === 'diarySearch') {
+    diaryQuery = e.target.value;
+    diaryRefreshCards();
+    if (diaryQuery.trim()) setTimeout(diaryJumpToResults, 40);
+  }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.target && e.target.id === 'diarySearch' && e.key === 'Enter') {
+    e.preventDefault();
+    diaryQuery = e.target.value;
+    diaryRefreshCards();
+    setTimeout(diaryJumpToResults, 40);
+    try { e.target.blur(); } catch (err) {}
+  }
 });
 document.addEventListener('click', function (e) {
   const t = e.target;
@@ -2256,7 +2287,7 @@ function renderMain() {
     listHtml = isExpense ? '' : (pendingItems.length ? '' : `<div class="card empty">尚無內容，用上方輸入框或語音新增</div>`);
   } else if (cat.id === 'diary') {
     if (diaryFresh) { diaryQuery = ''; diaryMoodFilter = ''; diaryKindFilter = ''; }   // 進日記頁從乾淨狀態開始
-    diaryTopHtml = diaryToolbarHtml();                            // 搜尋與心情篩選固定在頂部
+    diaryTopHtml = '';                                            // 篩選列隱藏（前賢 2026-10-30）
     listHtml = `<div id="diaryCards">${diaryCardsHtml(listItems)}</div>`;
   } else {
     const sorted = [...listItems].sort((a,b) => (b.date||'').localeCompare(a.date||''));

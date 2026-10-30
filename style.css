@@ -2048,3 +2048,36 @@ li.dgroup.acting .drow .dcard-acts { display: flex; }
 .dsearch-mini input { border: 0; outline: 0; background: transparent; font-size: .78rem; width: 100%; min-width: 0;
   padding: 1px 0; color: inherit; }
 .dsearch-mini input::-webkit-search-cancel-button { transform: scale(.85); }
+
+/* 搜尋與篩選走清爽路線（2026-10-30）：平時只有放大鏡，篩選併成一列 */
+.h2-row { align-items: center; }
+.h2-row h2 { flex: none; }
+.dsearch-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.dsearch-toggle { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  padding: 0; border: 0; background: transparent; color: #A29684; border-radius: 50%; cursor: pointer; }
+.dsearch-toggle:active { background: #F6EEE2; }
+.dsearch-wrap input { width: 0; min-width: 0; opacity: 0; padding: 0; border: 0; background: transparent; color: inherit;
+  font-size: .84rem; outline: none; transition: width .18s ease, opacity .14s ease; }
+.dsearch-wrap.open input { width: 132px; opacity: 1; padding: 3px 0 4px; border-bottom: 1px solid #E8DAC4; }
+.dsearch-wrap.open input::placeholder { color: #B7AC9C; }
+.dsearch-wrap input::-webkit-search-cancel-button { transform: scale(.8); }
+.dbar { padding: 6px 0 2px; }
+.dbar-row { display: flex; align-items: center; gap: 5px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.dbar-row::-webkit-scrollbar { display: none; }
+.dbar-sep { flex: none; width: 1px; height: 14px; background: #EADFCB; margin: 0 3px; }
+.dbar .dfilter { flex: none; border: 0; background: transparent; color: #8A8378; font-size: .95rem; line-height: 1;
+  padding: 6px 7px; border-radius: 999px; cursor: pointer; }
+.dbar .dfilter.on { background: #FBEEDC; color: #C8811F; box-shadow: inset 0 0 0 1px #F0D9B4; }
+.dbar .dkfilter { flex: none; border: 0; background: transparent; color: #8A8378; font-size: .74rem; line-height: 1;
+  padding: 6px 8px; border-radius: 999px; cursor: pointer; }
+.dbar .dkfilter.on { background: #EFF3EC; color: #5F7C59; box-shadow: inset 0 0 0 1px #DCE5D6; font-weight: 700; }
+
+/* 日記搜尋：輸入框在左、放大鏡在右；篩選列隱藏（2026-10-30） */
+.h2-row { display: flex; align-items: center; gap: 10px; }
+.h2-row h2 { flex: none; margin: 0; }
+.dsearch-wrap { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+.dsearch-wrap input { width: 100%; min-width: 0; opacity: 1; padding: 3px 0 4px; border: 0;
+  border-bottom: 1px solid #E8DAC4; background: transparent; color: inherit; font-size: .84rem; outline: none; }
+.dsearch-wrap input::placeholder { color: #B7AC9C; }
+.dsearch-toggle { flex: none; width: 28px; height: 28px; }
+.dbar { display: none !important; }
