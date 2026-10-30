@@ -1830,8 +1830,7 @@ li.todo-li.acting, li.diary-li.acting { background: #fffdf7; }
   border-radius: 999px; cursor: pointer;
   box-shadow: 0 4px 14px rgba(160,130,90,.16);
 }
-.dc-moods { display: flex; gap: 7px; overflow-x: auto; padding: 0 2px 11px; scrollbar-width: none; }
-.dc-moods::-webkit-scrollbar { display: none; }
+.dc-moods { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 2px 11px; }
 .dc-mood {
   flex: none; border: 1px solid #F1E4D2; background: #FFFDF9; color: #8A8378;
   font-size: .76rem; padding: 7px 14px; border-radius: 999px; cursor: pointer;
